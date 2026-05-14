@@ -18,7 +18,7 @@ const SERVERS = [
   {
     id: 'vidlink',
     name: 'VidLink',
-    badge: 'SUB',
+    badge: '',
     getUrl: (id) => `https://vidlink.pro/movie/${id}`,
   },
   {
