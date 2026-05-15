@@ -1,90 +1,129 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import Search from '../components/Search'
-import Spinner from '../components/Spinner'
+import { useEffect } from 'react'
+import Navbar from '../components/Navbar'
+import Hero from '../components/Hero'
+import FilterBar from '../components/FilterBar'
 import MovieCard from '../components/MovieCard'
-import { useDebounce } from 'react-use'
-
-const API_BASE_URL = 'https://api.themoviedb.org/3'
-const API_KEY = import.meta.env.VITE_TMDB_API_KEY
-
-const API_OPTION = {
-  method: 'GET',
-  headers: {
-    accept: 'application/json',
-    Authorization: `Bearer ${API_KEY}`,
-  },
-}
+import Pagination from '../components/Pagination'
+import { SkeletonGrid } from '../components/Spinner'
+import { EmptyState, ErrorState } from '../components/States'
+import { useMovies, useGenres } from '../hooks/useMovies'
 
 const HomePage = () => {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [errorMessage, setErrorMessage] = useState('')
-  const [moviesList, setMoviesList] = useState([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('')
-  const navigate = useNavigate()
+  const genres = useGenres()
 
-  useDebounce(() => setDebouncedSearchTerm(searchTerm), 500, [searchTerm])
+  const {
+    // search
+    searchTerm, setSearchTerm, clearSearch,
+    // navigation
+    category, setCategory,
+    page, setPage,
+    // filters
+    draftFilters, updateDraftFilter,
+    appliedFilters, removeAppliedFilter,
+    applyFilters, resetFilters,
+    activeFilterCount, hasDraftChanges,
+    castLoading,
+    // data
+    movies, totalPages, totalResults,
+    isLoading, error, reload,
+  } = useMovies()
 
-  const fetchMovies = async (query = '') => {
-    setIsLoading(true)
-    setErrorMessage('')
-    try {
-      const endpoint = query
-        ? `${API_BASE_URL}/search/movie?query=${encodeURIComponent(query)}`
-        : `${API_BASE_URL}/discover/movie?sort_by=popularity.desc`
+  const isSearching = searchTerm.trim().length > 0
 
-      const response = await fetch(endpoint, API_OPTION)
-      if (!response.ok) throw new Error('Failed to fetch movies')
+  // Smooth scroll to top on page change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [page])
 
-      const data = await response.json()
-      setMoviesList(data.results || [])
-    } catch (error) {
-      console.error(`Error fetching movies: ${error}`)
-      setErrorMessage('Failed to fetch movies. Please try again.')
-    } finally {
-      setIsLoading(false)
-    }
+  // Clear search + filters together
+  const handleClearAll = () => {
+    clearSearch()
+    resetFilters()
   }
 
-  useEffect(() => {
-    fetchMovies(debouncedSearchTerm)
-  }, [debouncedSearchTerm])
-
   return (
-    <main>
-      <div className="pattern" />
-      <div className="wrapper">
-        <header>
-          <img src="./hero.png" alt="Hero Banner" />
-          <h1>
-            Find <span className="text-gradient">Movies</span> You'll Enjoy
-            without the Hassle
-          </h1>
-          <Search searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
-        </header>
+    <>
+      <Navbar />
 
-        <section className="all-movies">
-          <h2 className="mt-10">ALL Movies</h2>
+      <main className="homepage" id="main-content">
+        {/* Background pattern */}
+        <div className="pattern" aria-hidden="true" />
 
-          {isLoading ? (
-            <Spinner />
-          ) : errorMessage ? (
-            <p className="text-red-500">{errorMessage}</p>
-          ) : (
-            <ul>
-              {moviesList.map((movie) => (
-                <MovieCard
-                  key={movie.id}
-                  movie={movie}
-                  onClick={() => navigate(`/movie/${movie.id}`)}
-                />
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
-    </main>
+        {/* Hero + Search */}
+        <Hero
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          clearSearch={clearSearch}
+          totalResults={totalResults}
+          isSearching={isSearching}
+        />
+
+        <div className="homepage-body">
+          {/* Category tabs + Filter panel */}
+          <FilterBar
+            category={category}
+            setCategory={setCategory}
+            draftFilters={draftFilters}
+            updateDraftFilter={updateDraftFilter}
+            appliedFilters={appliedFilters}
+            removeAppliedFilter={removeAppliedFilter}
+            applyFilters={applyFilters}
+            resetFilters={resetFilters}
+            activeFilterCount={activeFilterCount}
+            hasDraftChanges={hasDraftChanges}
+            castLoading={castLoading}
+            genres={genres}
+            totalResults={totalResults}
+            isLoading={isLoading}
+            isSearching={isSearching}
+          />
+
+          {/* Movies section */}
+          <section aria-label="Movies list" className="movies-section">
+            {isSearching && (
+              <h2 className="movies-section-heading">
+                Search results for "<em>{searchTerm}</em>"
+              </h2>
+            )}
+
+            {/* Loading skeleton */}
+            {isLoading && <SkeletonGrid count={20} />}
+
+            {/* Error */}
+            {!isLoading && error && (
+              <ErrorState message={error} onRetry={reload} />
+            )}
+
+            {/* Empty state */}
+            {!isLoading && !error && movies.length === 0 && (
+              <EmptyState searchTerm={searchTerm} onClear={handleClearAll} />
+            )}
+
+            {/* Grid */}
+            {!isLoading && !error && movies.length > 0 && (
+              <ul className="movies-grid" aria-label="Movie cards">
+                {movies.map((movie) => (
+                  <li key={movie.id}>
+                    <MovieCard movie={movie} />
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {/* Pagination */}
+            {!isLoading && movies.length > 0 && (
+              <Pagination
+                page={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+              />
+            )}
+          </section>
+        </div>
+      </main>
+
+      <a href="#main-content" className="skip-link">Skip to content</a>
+    </>
   )
 }
 
