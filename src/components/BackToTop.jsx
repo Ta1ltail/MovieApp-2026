@@ -1,0 +1,46 @@
+import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
+
+const ChevronUpIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth="2.5"
+    stroke="currentColor"
+    width="20"
+    height="20"
+    aria-hidden="true"
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+  </svg>
+)
+
+const BackToTop = () => {
+  const [visible, setVisible] = useState(false)
+  const location = useLocation()
+  const isHome = location.pathname === '/'
+
+  useEffect(() => {
+    if (!isHome) { setVisible(false); return }
+    const onScroll = () => setVisible(window.scrollY > 400)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [isHome])
+
+  if (!isHome || !visible) return null
+
+  return (
+    <button
+      className="back-to-top"
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      aria-label="Back to top"
+      title="Back to top"
+    >
+      <ChevronUpIcon />
+    </button>
+  )
+}
+
+export default BackToTop

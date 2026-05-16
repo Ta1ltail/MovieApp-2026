@@ -1,83 +1,138 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useDebounce } from 'react-use'
 import { fetchMovies, searchMovies, fetchGenres } from '../lib/tmdb'
 
-// ── Default filter shape ───────────────────────────────────────────────────────
-const DEFAULT_FILTERS = {
-  genreId:   '',  // single genre ID string
-  year:      '',  // 4-digit year string
-  minRating: '',  // '6' | '7' | '8' | '9'
-}
+const DEFAULT_FILTERS = { genreId: '', year: '', minRating: '' }
 
-// ── useGenres ─────────────────────────────────────────────────────────────────
 export const useGenres = () => {
   const [genres, setGenres] = useState([])
-  useEffect(() => {
-    fetchGenres().then(setGenres).catch(console.error)
-  }, [])
+  useEffect(() => { fetchGenres().then(setGenres).catch(console.error) }, [])
   return genres
 }
 
-// ── useMovies ─────────────────────────────────────────────────────────────────
 export const useMovies = () => {
-  // ── Search ──────────────────────────────────────────────────────────────────
-  const [searchTerm,      setSearchTerm]      = useState('')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [params, setParams] = useSearchParams()
 
-  // ── Navigation ──────────────────────────────────────────────────────────────
-  const [category, setCategory] = useState('all')
-  const [page,     setPage]     = useState(1)
+  // Read from URL or fallback to defaults
+  const category    = params.get('category') || 'all'
+  const page        = parseInt(params.get('page') || '1', 10)
+  const genreId     = params.get('genre')  || ''
+  const year        = params.get('year')   || ''
+  const minRating   = params.get('rating') || ''
 
-  // ── Two-layer filters ───────────────────────────────────────────────────────
-  const [draftFilters,   setDraftFilters]   = useState({ ...DEFAULT_FILTERS })
-  const [appliedFilters, setAppliedFilters] = useState({ ...DEFAULT_FILTERS })
+  const [searchTerm,      setSearchTerm]      = useState(params.get('q') || '')
+  const [debouncedSearch, setDebouncedSearch] = useState(searchTerm.trim())
 
-  // ── Async state ─────────────────────────────────────────────────────────────
+  const [draftFilters,   setDraftFilters]   = useState({ genreId, year, minRating })
+  const [appliedFilters, setAppliedFilters] = useState({ genreId, year, minRating })
+
   const [movies,       setMovies]       = useState([])
   const [totalPages,   setTotalPages]   = useState(1)
   const [totalResults, setTotalResults] = useState(0)
   const [isLoading,    setIsLoading]    = useState(false)
   const [error,        setError]        = useState('')
 
-  // Prevent stale responses from clobbering newer ones
   const reqId = useRef(0)
 
-  // ── Debounce search (250ms for snappier feel) ────────────────────────────────
   useDebounce(() => setDebouncedSearch(searchTerm.trim()), 250, [searchTerm])
 
-  // ── Reset to page 1 when navigation or committed filters change ─────────────
-  useEffect(() => { setPage(1) }, [debouncedSearch, category, appliedFilters])
+  // Sync search term to URL
+  useEffect(() => {
+    setParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (debouncedSearch) next.set('q', debouncedSearch); else next.delete('q')
+      next.delete('page')
+      return next
+    }, { replace: true })
+  }, [debouncedSearch]) 
 
-  // ── Main fetch ──────────────────────────────────────────────────────────────
+  // Sync category/page/filters to URL
+  const setCategory = useCallback((cat) => {
+    setParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (cat === 'all') next.delete('category'); else next.set('category', cat)
+      next.delete('page')
+      return next
+    }, { replace: true })
+  }, [setParams])
+
+  const setPage = useCallback((p) => {
+    setParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (p === 1) next.delete('page'); else next.set('page', String(p))
+      return next
+    }, { replace: true })
+  }, [setParams])
+
+  const updateDraftFilter = useCallback((key, value) => {
+    setDraftFilters(prev => ({ ...prev, [key]: value }))
+  }, [])
+
+  const applyFilters = useCallback(() => {
+    setAppliedFilters({ ...draftFilters })
+    setParams(prev => {
+      const next = new URLSearchParams(prev)
+      if (draftFilters.genreId) next.set('genre', draftFilters.genreId); else next.delete('genre')
+      if (draftFilters.year)    next.set('year',  draftFilters.year);    else next.delete('year')
+      if (draftFilters.minRating) next.set('rating', draftFilters.minRating); else next.delete('rating')
+      next.delete('page')
+      return next
+    }, { replace: true })
+  }, [draftFilters, setParams])
+
+  const removeAppliedFilter = useCallback((key) => {
+    const paramMap = { genreId: 'genre', year: 'year', minRating: 'rating' }
+    setDraftFilters(prev => ({ ...prev, [key]: '' }))
+    setAppliedFilters(prev => ({ ...prev, [key]: '' }))
+    setParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.delete(paramMap[key])
+      next.delete('page')
+      return next
+    }, { replace: true })
+  }, [setParams])
+
+  const resetFilters = useCallback(() => {
+    setDraftFilters({ ...DEFAULT_FILTERS })
+    setAppliedFilters({ ...DEFAULT_FILTERS })
+    setParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.delete('genre'); next.delete('year'); next.delete('rating'); next.delete('page')
+      return next
+    }, { replace: true })
+  }, [setParams])
+
+  const clearSearch = useCallback(() => {
+    setSearchTerm('')
+    setParams(prev => {
+      const next = new URLSearchParams(prev)
+      next.delete('q'); next.delete('page')
+      return next
+    }, { replace: true })
+  }, [setParams])
+
   const load = useCallback(async () => {
     const id = ++reqId.current
     setIsLoading(true)
     setError('')
-
     try {
       let data
-
       if (debouncedSearch) {
-        // Search mode — TMDB /search/movie is title/keyword based
         data = await searchMovies(debouncedSearch, page)
       } else {
-        // Browse mode — all filters via /discover/movie
-        const filters = {
+        data = await fetchMovies(category, {
           genreIds:  appliedFilters.genreId  ? [appliedFilters.genreId] : [],
           year:      appliedFilters.year      || '',
           minRating: appliedFilters.minRating || '',
-        }
-        data = await fetchMovies(category, filters, page)
+        }, page)
       }
-
-      if (id !== reqId.current) return // discard stale response
-
+      if (id !== reqId.current) return
       setMovies(data.results ?? [])
-      setTotalPages(Math.min(data.total_pages ?? 1, 500)) // TMDB hard cap
+      setTotalPages(Math.min(data.total_pages ?? 1, 500))
       setTotalResults(data.total_results ?? 0)
     } catch (err) {
       if (id !== reqId.current) return
-      console.error('[useMovies] fetch error:', err)
       setError('Failed to load movies. Please try again.')
       setMovies([])
     } finally {
@@ -87,59 +142,20 @@ export const useMovies = () => {
 
   useEffect(() => { load() }, [load])
 
-  // ── Draft filter helpers ────────────────────────────────────────────────────
-  const updateDraftFilter = useCallback((key, value) => {
-    setDraftFilters(prev => ({ ...prev, [key]: value }))
-  }, [])
-
-  // ── Apply: commit draft → applied ────────────────────────────────────────────
-  const applyFilters = useCallback(() => {
-    setAppliedFilters({ ...draftFilters })
-  }, [draftFilters])
-
-  // ── Remove a single applied filter (chip × button) ───────────────────────────
-  const removeAppliedFilter = useCallback((key) => {
-    setDraftFilters(prev => ({ ...prev, [key]: '' }))
-    setAppliedFilters(prev => ({ ...prev, [key]: '' }))
-  }, [])
-
-  // ── Reset: clear everything ─────────────────────────────────────────────────
-  const resetFilters = useCallback(() => {
-    setDraftFilters({ ...DEFAULT_FILTERS })
-    setAppliedFilters({ ...DEFAULT_FILTERS })
-  }, [])
-
-  const clearSearch = useCallback(() => setSearchTerm(''), [])
-
-  const handleSetCategory = useCallback((cat) => {
-    setCategory(cat)
-    setPage(1)
-  }, [])
-
-  // ── Derived ─────────────────────────────────────────────────────────────────
-  const activeFilterCount = [
-    appliedFilters.genreId,
-    appliedFilters.year,
-    appliedFilters.minRating,
-  ].filter(Boolean).length
-
+  const activeFilterCount = [appliedFilters.genreId, appliedFilters.year, appliedFilters.minRating].filter(Boolean).length
   const hasDraftChanges =
-    draftFilters.genreId   !== appliedFilters.genreId   ||
-    draftFilters.year      !== appliedFilters.year      ||
+    draftFilters.genreId !== appliedFilters.genreId ||
+    draftFilters.year    !== appliedFilters.year    ||
     draftFilters.minRating !== appliedFilters.minRating
 
   return {
-    // search
     searchTerm, setSearchTerm, clearSearch,
-    // navigation
-    category, setCategory: handleSetCategory,
+    category, setCategory,
     page, setPage,
-    // filters
-    draftFilters,   updateDraftFilter,
+    draftFilters, updateDraftFilter,
     appliedFilters, removeAppliedFilter,
-    applyFilters,   resetFilters,
+    applyFilters, resetFilters,
     activeFilterCount, hasDraftChanges,
-    // data
     movies, totalPages, totalResults,
     isLoading, error,
     reload: load,

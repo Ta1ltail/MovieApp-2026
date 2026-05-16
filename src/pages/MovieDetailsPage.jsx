@@ -1,8 +1,11 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import Spinner from '../components/Spinner'
 import VideoPlayer from '../components/VideoPlayer'
+import SimilarMovies from '../components/SimilarMovies'
 import Navbar from '../components/Navbar'
+import Footer from '../components/Footer'
+import LazyImage from '../components/LazyImage'
 import { fetchMovieDetails, getPosterUrl, getBackdropUrl } from '../lib/tmdb'
 
 const StarIcon = () => (
@@ -12,6 +15,8 @@ const StarIcon = () => (
 const MovieDetailsPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
   const [movie,     setMovie]     = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error,     setError]     = useState('')
@@ -35,7 +40,8 @@ const MovieDetailsPage = () => {
       }
     }
     load()
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+
+    window.scrollTo({ top: 0, behavior: 'instant' })
     return () => {
       cancelled = true
       document.title = 'MovieApp'
@@ -47,44 +53,42 @@ const MovieDetailsPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-primary flex items-center justify-center">
-        <Spinner size={48} />
-      </div>
+      <>
+        <Navbar />
+        <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-primary)' }}>
+          <Spinner size={48} />
+        </div>
+        <Footer />
+      </>
     )
   }
 
   if (error || !movie) {
     return (
-      <div className="min-h-screen bg-primary flex flex-col items-center justify-center gap-4">
-        <p className="text-red-400 text-lg">{error || 'Movie not found'}</p>
-        <button onClick={() => navigate('/')} className="details-back-btn">
-          ← Back to Home
-        </button>
-      </div>
+      <>
+        <Navbar />
+        <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ background: 'var(--bg-primary)' }}>
+          <p style={{ color: '#f87171', fontSize: '1.1rem' }}>{error || 'Movie not found'}</p>
+          <button onClick={() => navigate('/')} className="details-back-btn">← Back to Home</button>
+        </div>
+        <Footer />
+      </>
     )
   }
 
   const backdropUrl = getBackdropUrl(movie.backdrop_path)
   const posterUrl   = getPosterUrl(movie.poster_path, 'w500') ?? '/no-movie.svg'
   const releaseYear = movie.release_date?.split('-')[0] ?? 'N/A'
-  const runtime     = movie.runtime
-    ? `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m`
-    : 'N/A'
-  const rating = movie.vote_average?.toFixed(1) ?? 'N/A'
+  const runtime     = movie.runtime ? `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m` : 'N/A'
+  const rating      = movie.vote_average?.toFixed(1) ?? 'N/A'
 
   return (
     <div className="details-page">
       <Navbar />
 
-      {/* Backdrop */}
       <div className="details-backdrop">
         {backdropUrl && (
-          <img
-            src={backdropUrl}
-            alt=""
-            aria-hidden="true"
-            className="details-backdrop-img"
-          />
+          <LazyImage src={backdropUrl} alt="" className="details-backdrop-img" />
         )}
         <div className="details-backdrop-overlay" />
         <button
@@ -96,32 +100,24 @@ const MovieDetailsPage = () => {
         </button>
       </div>
 
-      {/* Content */}
       <div className="details-content-wrapper">
         <div className="details-main">
-
-          {/* Poster */}
           <div className="details-poster-wrap">
-            <img
+            <LazyImage
               src={posterUrl}
               alt={`${movie.title} poster`}
               className="details-poster"
-              onError={(e) => { e.currentTarget.src = '/no-movie.svg' }}
+              fallback="/no-movie.svg"
             />
           </div>
 
-          {/* Info */}
           <div className="details-info">
             <h1 className="details-title">{movie.title}</h1>
-
-            {movie.tagline && (
-              <p className="details-tagline">"{movie.tagline}"</p>
-            )}
+            {movie.tagline && <p className="details-tagline">"{movie.tagline}"</p>}
 
             <div className="details-meta">
               <span className="details-rating" aria-label={`Rating: ${rating} out of 10`}>
-                <StarIcon />
-                {rating}
+                <StarIcon />{rating}
               </span>
               <span className="details-dot" aria-hidden="true">•</span>
               <span>{releaseYear}</span>
@@ -137,28 +133,27 @@ const MovieDetailsPage = () => {
 
             {movie.genres?.length > 0 && (
               <div className="details-genres" aria-label="Genres">
-                {movie.genres.map((g) => (
+                {movie.genres.map(g => (
                   <span key={g.id} className="details-genre-pill">{g.name}</span>
                 ))}
               </div>
             )}
 
-            {movie.overview && (
-              <p className="details-overview">{movie.overview}</p>
-            )}
+            {movie.overview && <p className="details-overview">{movie.overview}</p>}
 
-            <button onClick={scrollToPlayer} className="details-watch-btn">
-              ▶ Watch Now
-            </button>
+            <button onClick={scrollToPlayer} className="details-watch-btn">▶ Watch Now</button>
           </div>
         </div>
 
-        {/* Video Player */}
         <div ref={playerRef} className="details-player-section">
           <h2 className="details-player-heading">Watch Movie</h2>
           <VideoPlayer tmdbId={id} title={movie.title} />
         </div>
+
+        <SimilarMovies movieId={id} />
       </div>
+
+      <Footer />
     </div>
   )
 }

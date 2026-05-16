@@ -34,3 +34,4 @@ const Spinner = ({ size = 32 }) => (
 )
 
 export default Spinner
+

@@ -4,16 +4,27 @@ import { useState, useEffect, useCallback } from 'react'
 
 const SERVERS = [
   {
-    id:    'vidlink',
-    name:  'VidLink',
-    badge: 'HD',
-    getUrl: (id) => `https://vidlink.pro/movie/${id}?primaryColor=AB8BFF&secondaryColor=030014`,
-  },
-  {
-    id:    'vidsrc-me',
+    id:    'vidsrc-ru',
     name:  'VidSrc',
     badge: 'MULTI',
-    getUrl: (id) => `https://vidsrc.me/embed/movie?tmdb=${id}`,
+    getUrl: (id, subtitleUrl = null, dsLang = null) => {
+      let url = `https://vidsrc-embed.ru/embed/movie?tmdb=${id}&autoplay=1`;
+      if (dsLang)      url += `&ds_lang=${dsLang}`;
+      if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`;
+      return url;
+    },
+  },
+  {
+    id: 'vidlink',
+    name: 'VidLink',
+    badge: 'HD',
+    getUrl: (id, subtitleUrl = null, subtitleLabel = 'English') => {
+      let url = `https://vidlink.pro/movie/${id}?primaryColor=AB8BFF&secondaryColor=030014&autoplay=true`;
+      if (subtitleUrl) {
+        url += `&sub_file=${subtitleUrl}&sub_label=${subtitleLabel}`;
+      }
+      return url;
+    },
   },
   {
     id:    'superembed',
@@ -66,7 +77,7 @@ const usePopupBlocker = () => {
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-const VideoPlayer = ({ tmdbId, title }) => {
+const VideoPlayer = ({ tmdbId, title, subtitleUrl = null, subtitleLabel = 'English' }) => {
   const [activeServer, setActiveServer] = useState(0)
   const [isLoading,    setIsLoading]    = useState(true)
   const [hasError,     setHasError]     = useState(false)
@@ -146,17 +157,18 @@ const VideoPlayer = ({ tmdbId, title }) => {
           </div>
         )}
 
-        {/* Iframe — sandbox allows fullscreen + scripts; no top-navigation */}
+        {/* ── Iframe ── */}
         <iframe
           key={`${activeServer}-${tmdbId}`}
-          src={current.getUrl(tmdbId)}
+          src={current.getUrl(tmdbId, subtitleUrl, subtitleLabel)}
           title={`${title} — ${current.name}`}
           className="vp-iframe"
           onLoad={() => setIsLoading(false)}
           onError={() => { setIsLoading(false); setHasError(true) }}
-          allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
+          allow="autoplay; fullscreen *; picture-in-picture *; encrypted-media"
           allowFullScreen
-          referrerPolicy="no-referrer"
+          referrerPolicy="origin"
+          scrolling="no"
         />
       </div>
 

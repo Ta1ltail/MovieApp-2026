@@ -15,31 +15,28 @@ const Navbar = ({ searchTerm, setSearchTerm }) => {
   const isHome = location.pathname === '/'
 
   useEffect(() => {
-    if (searchOpen && inputRef.current) {
-      inputRef.current.focus()
-    }
+    if (searchOpen && inputRef.current) inputRef.current.focus()
   }, [searchOpen])
 
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape' && searchOpen) {
         setSearchOpen(false)
-        if (setSearchTerm) setSearchTerm('')
+        setSearchTerm?.('')
       }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [searchOpen, setSearchTerm])
 
-  // If there's already a search term, show the input open
   useEffect(() => {
     if (searchTerm && searchTerm.length > 0) setSearchOpen(true)
   }, [searchTerm])
 
   return (
-    <nav className="navbar" role="navigation" aria-label="Main navigation">
+    /* CHANGED: removed "sticky top-0 z-200" — navbar now scrolls with page */
+    <nav className="navbar navbar--relative" role="navigation" aria-label="Main navigation">
       <div className="navbar-inner">
-        {/* Brand */}
         <Link to="/" className="navbar-brand" aria-label="MovieApp — home">
           <span className="navbar-logo-icon" aria-hidden="true">🎬</span>
           <span className="navbar-logo-text">
@@ -47,10 +44,7 @@ const Navbar = ({ searchTerm, setSearchTerm }) => {
           </span>
         </Link>
 
-        {/* Right side */}
         <div className="navbar-right">
-
-          {/* Search — home only */}
           {isHome && (
             <div className="navbar-search-wrap">
               {searchOpen ? (

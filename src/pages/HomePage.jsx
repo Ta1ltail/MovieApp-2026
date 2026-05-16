@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import Navbar from '../components/Navbar'
 import FeaturedCarousel from '../components/FeaturedCarousel'
 import FilterBar from '../components/FilterBar'
@@ -19,6 +19,7 @@ const SearchIcon = () => (
 const HomePage = () => {
   const genres = useGenres()
   const searchInputRef = useRef(null)
+  const searchSectionRef = useRef(null)
 
   const {
     searchTerm, setSearchTerm, clearSearch,
@@ -34,9 +35,15 @@ const HomePage = () => {
 
   const isSearching = searchTerm.trim().length > 0
 
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [page])
+  const handlePageChange = useCallback((newPage) => {
+    setPage(newPage)
+    setTimeout(() => {
+      if (searchSectionRef.current) {
+        const top = searchSectionRef.current.getBoundingClientRect().top + window.scrollY - 16
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+      }
+    }, 50)
+  }, [setPage])
 
   const handleClearAll = () => {
     clearSearch()
@@ -47,17 +54,12 @@ const HomePage = () => {
     <>
       <a href="#main-content" className="skip-link">Skip to main content</a>
 
-      <Navbar
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-      />
+      <Navbar searchTerm={searchTerm} setSearchTerm={setSearchTerm} />
 
       <main className="homepage" id="main-content">
-        {/* Hero carousel — hidden during active search */}
         {!isSearching && <FeaturedCarousel />}
 
-        {/* ── Large homepage search bar (below carousel) ── */}
-        <div className="homepage-search-section">
+        <div className="homepage-search-section" ref={searchSectionRef}>
           <div className="homepage-search-inner">
             <div className="homepage-search-bar" role="search">
               <SearchIcon />
@@ -78,83 +80,52 @@ const HomePage = () => {
                       {totalResults.toLocaleString()} result{totalResults !== 1 ? 's' : ''}
                     </span>
                   )}
-                  <button
-                    className="homepage-search-clear"
-                    onClick={handleClearAll}
-                    aria-label="Clear search"
-                  >
-                    ✕
-                  </button>
+                  <button className="homepage-search-clear" onClick={handleClearAll} aria-label="Clear search">✕</button>
                 </>
               )}
             </div>
           </div>
         </div>
 
-        {/* Search results header (shown when searching) */}
         {isSearching && (
           <div className="search-results-header">
             <div className="search-results-inner">
-              <h2 className="search-results-title">
-                Results for "<em>{searchTerm}</em>"
-              </h2>
-              <button className="search-results-clear" onClick={handleClearAll}>
-                ← Back to browse
-              </button>
+              <h2 className="search-results-title">Results for "<em>{searchTerm}</em>"</h2>
+              <button className="search-results-clear" onClick={handleClearAll}>← Back to browse</button>
             </div>
           </div>
         )}
 
         <div className="homepage-body">
           <FilterBar
-            category={category}
-            setCategory={setCategory}
-            draftFilters={draftFilters}
-            updateDraftFilter={updateDraftFilter}
-            appliedFilters={appliedFilters}
-            removeAppliedFilter={removeAppliedFilter}
-            applyFilters={applyFilters}
-            resetFilters={resetFilters}
-            activeFilterCount={activeFilterCount}
-            hasDraftChanges={hasDraftChanges}
-            genres={genres}
-            totalResults={totalResults}
-            isLoading={isLoading}
-            isSearching={isSearching}
+            category={category} setCategory={setCategory}
+            draftFilters={draftFilters} updateDraftFilter={updateDraftFilter}
+            appliedFilters={appliedFilters} removeAppliedFilter={removeAppliedFilter}
+            applyFilters={applyFilters} resetFilters={resetFilters}
+            activeFilterCount={activeFilterCount} hasDraftChanges={hasDraftChanges}
+            genres={genres} totalResults={totalResults}
+            isLoading={isLoading} isSearching={isSearching}
           />
 
           <section aria-label="Movies list" className="movies-section">
-            {/* Loading skeleton */}
             {isLoading && <SkeletonGrid count={20} />}
 
-            {/* Error */}
-            {!isLoading && error && (
-              <ErrorState message={error} onRetry={reload} />
-            )}
+            {!isLoading && error && <ErrorState message={error} onRetry={reload} />}
 
-            {/* Empty state */}
             {!isLoading && !error && movies.length === 0 && (
               <EmptyState searchTerm={searchTerm} onClear={handleClearAll} />
             )}
 
-            {/* Grid */}
             {!isLoading && !error && movies.length > 0 && (
               <ul className="movies-grid" aria-label="Movie cards">
-                {movies.map((movie) => (
-                  <li key={movie.id}>
-                    <MovieCard movie={movie} />
-                  </li>
+                {movies.map(movie => (
+                  <li key={movie.id}><MovieCard movie={movie} /></li>
                 ))}
               </ul>
             )}
 
-            {/* Pagination */}
             {!isLoading && movies.length > 0 && (
-              <Pagination
-                page={page}
-                totalPages={totalPages}
-                onPageChange={setPage}
-              />
+              <Pagination page={page} totalPages={totalPages} onPageChange={handlePageChange} />
             )}
           </section>
         </div>
