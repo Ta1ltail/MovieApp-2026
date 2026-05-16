@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 
 // ── Providers ─────────────────────────────────────────────────────────────────
 
@@ -7,33 +7,31 @@ const SERVERS = [
     id:    'vidsrc-ru',
     name:  'VidSrc',
     badge: 'MULTI',
-    getUrl: (id, subtitleUrl = null, dsLang = null) => {
-      let url = `https://vidsrc-embed.ru/embed/movie?tmdb=${id}&autoplay=1`;
-      if (dsLang)      url += `&ds_lang=${dsLang}`;
-      if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`;
-      return url;
+    getUrl: (id, subtitleUrl, dsLang) => {
+      let url = `https://vidsrc-embed.ru/embed/movie?tmdb=${id}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false`
+      if (dsLang)      url += `&ds_lang=${dsLang}`
+      if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
+      return url
     },
   },
   {
-    id: 'vidlink',
-    name: 'VidLink',
+    id:    'vaplayer-ru',
+    name:  'VaPlayer',
     badge: 'HD',
-    getUrl: (id, subtitleUrl = null, subtitleLabel = 'English') => {
-      let url = `https://vidlink.pro/movie/${id}?primaryColor=AB8BFF&secondaryColor=030014&autoplay=true`;
-      if (subtitleUrl) {
-        url += `&sub_file=${subtitleUrl}&sub_label=${subtitleLabel}`;
-      }
-      return url;
+    getUrl: (id, subtitleUrl, subtitleLabel = 'English') => {
+      let url = `https://vaplayer.ru/embed/movie?tmdb=${id}&autoplay=false`
+      if (subtitleUrl) url += `&sub_file=${subtitleUrl}&sub_label=${subtitleLabel}`
+      return url
     },
   },
   {
-    id:    'superembed',
-    name:  'SuperEmbed',
+    id:    'vidlink.pro',
+    name:  'VidLink',
     badge: 'SUB',
-    getUrl: (id) => `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1`,
+    getUrl: (id) => `https://vidlink.pro/movie/${id}?primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&tmdb=1`,
   },
   {
-    id:    '2embed',
+    id:    '2embed.cc',
     name:  '2Embed',
     badge: '',
     getUrl: (id) => `https://www.2embed.cc/embed/${id}`,
@@ -41,62 +39,65 @@ const SERVERS = [
 ]
 
 // ── Popup/redirect blocker ─────────────────────────────────────────────────────
-const usePopupBlocker = () => {
+
+const usePopupBlocker = (wrapRef) => {
   useEffect(() => {
-    const _open = window.open
-    window.open = (...args) => {
-      console.warn('[VideoPlayer] Blocked popup:', args[0])
-      return null
-    }
-
-    const handleBeforeUnload = (e) => {
-      e.preventDefault()
-      e.returnValue = ''
-    }
-    window.addEventListener('beforeunload', handleBeforeUnload)
-
+    const _open    = window.open
     const _push    = history.pushState.bind(history)
     const _replace = history.replaceState.bind(history)
 
-    history.pushState = (...args) => {
-      if (args[2] && String(args[2]).startsWith('/')) return _push(...args)
-      console.warn('[VideoPlayer] Blocked pushState:', args[2])
+    window.open = () => null
+
+    try { window.location.assign = window.location.replace = () => {} } catch {}
+    try { Object.defineProperty(window, 'top', { get: () => window, configurable: true }) } catch {}
+
+    const isValidPath = (url) => url && String(url).startsWith('/')
+    history.pushState    = (...a) => isValidPath(a[2]) && _push(...a)
+    history.replaceState = (...a) => isValidPath(a[2]) && _replace(...a)
+
+    const onUnload = (e) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', onUnload)
+
+    let lastClick = 0
+    const onClickCapture = (e) => {
+      const now = Date.now()
+      if (now - lastClick > 600) { lastClick = now; e.stopPropagation() }
     }
-    history.replaceState = (...args) => {
-      if (args[2] && String(args[2]).startsWith('/')) return _replace(...args)
-      console.warn('[VideoPlayer] Blocked replaceState:', args[2])
-    }
+    wrapRef.current?.addEventListener('click', onClickCapture, true)
+
+    const observer = new MutationObserver((mutations) => {
+      for (const { addedNodes } of mutations)
+        for (const node of addedNodes)
+          if (node.tagName === 'SCRIPT' || (node.tagName === 'IFRAME' && !node.classList.contains('vp-iframe')))
+            node.remove()
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
 
     return () => {
       window.open = _open
-      window.removeEventListener('beforeunload', handleBeforeUnload)
       history.pushState    = _push
       history.replaceState = _replace
+      window.removeEventListener('beforeunload', onUnload)
+      wrapRef.current?.removeEventListener('click', onClickCapture, true)
+      observer.disconnect()
     }
   }, [])
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
+
 const VideoPlayer = ({ tmdbId, title, subtitleUrl = null, subtitleLabel = 'English' }) => {
   const [activeServer, setActiveServer] = useState(0)
   const [isLoading,    setIsLoading]    = useState(true)
   const [hasError,     setHasError]     = useState(false)
+  const wrapRef = useRef(null)
 
-  usePopupBlocker()
+  usePopupBlocker(wrapRef)
 
-  useEffect(() => {
-    setIsLoading(true)
-    setHasError(false)
-  }, [activeServer, tmdbId])
+  useEffect(() => { setIsLoading(true); setHasError(false) }, [activeServer, tmdbId])
 
-  const handleServerChange = useCallback((i) => {
-    if (i !== activeServer) setActiveServer(i)
-  }, [activeServer])
-
-  const tryNextServer = useCallback(() => {
-    const next = (activeServer + 1) % SERVERS.length
-    setActiveServer(next)
-  }, [activeServer])
+  const handleServerChange = useCallback((i) => { if (i !== activeServer) setActiveServer(i) }, [activeServer])
+  const tryNextServer      = useCallback(() => setActiveServer((s) => (s + 1) % SERVERS.length), [])
 
   const current = SERVERS[activeServer]
 
@@ -127,9 +128,8 @@ const VideoPlayer = ({ tmdbId, title, subtitleUrl = null, subtitleLabel = 'Engli
       </div>
 
       {/* ── Player ── */}
-      <div className="vp-player-wrap">
+      <div className="vp-player-wrap" ref={wrapRef}>
 
-        {/* Loading overlay */}
         {isLoading && (
           <div className="vp-loading-overlay" aria-live="polite">
             <div className="vp-loading-inner">
@@ -142,7 +142,6 @@ const VideoPlayer = ({ tmdbId, title, subtitleUrl = null, subtitleLabel = 'Engli
           </div>
         )}
 
-        {/* Error overlay */}
         {hasError && !isLoading && (
           <div className="vp-error-overlay" role="alert">
             <svg className="vp-error-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -151,13 +150,10 @@ const VideoPlayer = ({ tmdbId, title, subtitleUrl = null, subtitleLabel = 'Engli
             </svg>
             <p className="vp-error-text">{current.name} is unavailable</p>
             <p className="vp-error-sub">Try switching to another server below</p>
-            <button className="vp-retry-btn" onClick={tryNextServer}>
-              Try next server →
-            </button>
+            <button className="vp-retry-btn" onClick={tryNextServer}>Try next server →</button>
           </div>
         )}
 
-        {/* ── Iframe ── */}
         <iframe
           key={`${activeServer}-${tmdbId}`}
           src={current.getUrl(tmdbId, subtitleUrl, subtitleLabel)}
@@ -172,7 +168,6 @@ const VideoPlayer = ({ tmdbId, title, subtitleUrl = null, subtitleLabel = 'Engli
         />
       </div>
 
-      {/* ── Footer hint ── */}
       <p className="vp-hint">
         If a server doesn't load or shows an error, switch to another. Subtitles may vary by provider.
       </p>
