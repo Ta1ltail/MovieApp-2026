@@ -32,9 +32,8 @@ const Pagination = ({ page, totalPages, onPageChange }) => {
       </button>
 
       {/* Page numbers */}
-      {pages.map((p, i) => {
+      {pages.map((p) => {
         if (typeof p === 'string') {
-          // ellipsis — jump to logical target
           const target = p === '…start' ? 1 : totalPages
           return (
             <button
@@ -69,11 +68,6 @@ const Pagination = ({ page, totalPages, onPageChange }) => {
       >
         ›
       </button>
-
-      {/* Page info */}
-      <span className="pagination-info">
-        Page {page} of {totalPages.toLocaleString()}
-      </span>
     </nav>
   )
 }

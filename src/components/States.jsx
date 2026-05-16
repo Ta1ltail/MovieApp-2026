@@ -4,14 +4,12 @@ export const EmptyState = ({ searchTerm, onClear }) => (
     <h3 className="empty-state-title">No movies found</h3>
     <p className="empty-state-text">
       {searchTerm
-        ? `No results for "${searchTerm}". Try a different search term.`
-        : 'No movies match your current filters.'}
+        ? `No results for "${searchTerm}". Try a different keyword.`
+        : 'No movies match your current filters. Try adjusting or resetting them.'}
     </p>
-    {(searchTerm || true) && (
-      <button className="empty-state-btn" onClick={onClear}>
-        {searchTerm ? 'Clear search' : 'Reset filters'}
-      </button>
-    )}
+    <button className="empty-state-btn" onClick={onClear}>
+      {searchTerm ? 'Clear search' : 'Reset filters'}
+    </button>
   </div>
 )
 

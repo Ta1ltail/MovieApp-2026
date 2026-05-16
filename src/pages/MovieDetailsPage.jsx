@@ -2,34 +2,44 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Spinner from '../components/Spinner'
 import VideoPlayer from '../components/VideoPlayer'
+import Navbar from '../components/Navbar'
 import { fetchMovieDetails, getPosterUrl, getBackdropUrl } from '../lib/tmdb'
+
+const StarIcon = () => (
+  <img src="/star.svg" alt="" aria-hidden="true" className="details-star" />
+)
 
 const MovieDetailsPage = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [movie, setMovie] = useState(null)
+  const [movie,     setMovie]     = useState(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [error,     setError]     = useState('')
   const playerRef = useRef(null)
 
   useEffect(() => {
+    let cancelled = false
     const load = async () => {
       setIsLoading(true)
       setError('')
       try {
         const data = await fetchMovieDetails(id)
-        setMovie(data)
-        // Update document title for SEO
-        document.title = `${data.title} — Movie App by: Justin`
+        if (!cancelled) {
+          setMovie(data)
+          document.title = `${data.title} — MovieApp`
+        }
       } catch {
-        setError('Failed to load movie details.')
+        if (!cancelled) setError('Failed to load movie details.')
       } finally {
-        setIsLoading(false)
+        if (!cancelled) setIsLoading(false)
       }
     }
     load()
     window.scrollTo({ top: 0, behavior: 'smooth' })
-    return () => { document.title = 'Movie App by: Justin' }
+    return () => {
+      cancelled = true
+      document.title = 'MovieApp'
+    }
   }, [id])
 
   const scrollToPlayer = () =>
@@ -60,9 +70,12 @@ const MovieDetailsPage = () => {
   const runtime     = movie.runtime
     ? `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m`
     : 'N/A'
+  const rating = movie.vote_average?.toFixed(1) ?? 'N/A'
 
   return (
     <div className="details-page">
+      <Navbar />
+
       {/* Backdrop */}
       <div className="details-backdrop">
         {backdropUrl && (
@@ -74,7 +87,11 @@ const MovieDetailsPage = () => {
           />
         )}
         <div className="details-backdrop-overlay" />
-        <button onClick={() => navigate('/')} className="details-back-btn details-back-btn--absolute">
+        <button
+          onClick={() => navigate('/')}
+          className="details-back-btn details-back-btn--absolute"
+          aria-label="Back to home"
+        >
           ← Back
         </button>
       </div>
@@ -82,6 +99,7 @@ const MovieDetailsPage = () => {
       {/* Content */}
       <div className="details-content-wrapper">
         <div className="details-main">
+
           {/* Poster */}
           <div className="details-poster-wrap">
             <img
@@ -101,9 +119,9 @@ const MovieDetailsPage = () => {
             )}
 
             <div className="details-meta">
-              <span className="details-rating">
-                <img src="/star.svg" alt="" aria-hidden="true" className="details-star" />
-                {movie.vote_average?.toFixed(1) ?? 'N/A'}
+              <span className="details-rating" aria-label={`Rating: ${rating} out of 10`}>
+                <StarIcon />
+                {rating}
               </span>
               <span className="details-dot" aria-hidden="true">•</span>
               <span>{releaseYear}</span>
@@ -118,7 +136,7 @@ const MovieDetailsPage = () => {
             </div>
 
             {movie.genres?.length > 0 && (
-              <div className="details-genres">
+              <div className="details-genres" aria-label="Genres">
                 {movie.genres.map((g) => (
                   <span key={g.id} className="details-genre-pill">{g.name}</span>
                 ))}

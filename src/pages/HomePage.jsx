@@ -1,41 +1,43 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import Navbar from '../components/Navbar'
-import Hero from '../components/Hero'
+import FeaturedCarousel from '../components/FeaturedCarousel'
 import FilterBar from '../components/FilterBar'
 import MovieCard from '../components/MovieCard'
 import Pagination from '../components/Pagination'
+import Footer from '../components/Footer'
 import { SkeletonGrid } from '../components/Spinner'
 import { EmptyState, ErrorState } from '../components/States'
 import { useMovies, useGenres } from '../hooks/useMovies'
 
+const SearchIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" className="homepage-search-icon">
+    <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+    <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+)
+
 const HomePage = () => {
   const genres = useGenres()
+  const searchInputRef = useRef(null)
 
   const {
-    // search
     searchTerm, setSearchTerm, clearSearch,
-    // navigation
     category, setCategory,
     page, setPage,
-    // filters
     draftFilters, updateDraftFilter,
     appliedFilters, removeAppliedFilter,
     applyFilters, resetFilters,
     activeFilterCount, hasDraftChanges,
-    castLoading,
-    // data
     movies, totalPages, totalResults,
     isLoading, error, reload,
   } = useMovies()
 
   const isSearching = searchTerm.trim().length > 0
 
-  // Smooth scroll to top on page change
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [page])
 
-  // Clear search + filters together
   const handleClearAll = () => {
     clearSearch()
     resetFilters()
@@ -43,23 +45,67 @@ const HomePage = () => {
 
   return (
     <>
-      <Navbar />
+      <a href="#main-content" className="skip-link">Skip to main content</a>
+
+      <Navbar
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+      />
 
       <main className="homepage" id="main-content">
-        {/* Background pattern */}
-        <div className="pattern" aria-hidden="true" />
+        {/* Hero carousel — hidden during active search */}
+        {!isSearching && <FeaturedCarousel />}
 
-        {/* Hero + Search */}
-        <Hero
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          clearSearch={clearSearch}
-          totalResults={totalResults}
-          isSearching={isSearching}
-        />
+        {/* ── Large homepage search bar (below carousel) ── */}
+        <div className="homepage-search-section">
+          <div className="homepage-search-inner">
+            <div className="homepage-search-bar" role="search">
+              <SearchIcon />
+              <input
+                ref={searchInputRef}
+                type="search"
+                className="homepage-search-input"
+                placeholder="Search for movies, genres, titles…"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                aria-label="Search movies"
+                autoComplete="off"
+              />
+              {isSearching && (
+                <>
+                  {!isLoading && totalResults > 0 && (
+                    <span className="homepage-search-count">
+                      {totalResults.toLocaleString()} result{totalResults !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                  <button
+                    className="homepage-search-clear"
+                    onClick={handleClearAll}
+                    aria-label="Clear search"
+                  >
+                    ✕
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Search results header (shown when searching) */}
+        {isSearching && (
+          <div className="search-results-header">
+            <div className="search-results-inner">
+              <h2 className="search-results-title">
+                Results for "<em>{searchTerm}</em>"
+              </h2>
+              <button className="search-results-clear" onClick={handleClearAll}>
+                ← Back to browse
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="homepage-body">
-          {/* Category tabs + Filter panel */}
           <FilterBar
             category={category}
             setCategory={setCategory}
@@ -71,21 +117,13 @@ const HomePage = () => {
             resetFilters={resetFilters}
             activeFilterCount={activeFilterCount}
             hasDraftChanges={hasDraftChanges}
-            castLoading={castLoading}
             genres={genres}
             totalResults={totalResults}
             isLoading={isLoading}
             isSearching={isSearching}
           />
 
-          {/* Movies section */}
           <section aria-label="Movies list" className="movies-section">
-            {isSearching && (
-              <h2 className="movies-section-heading">
-                Search results for "<em>{searchTerm}</em>"
-              </h2>
-            )}
-
             {/* Loading skeleton */}
             {isLoading && <SkeletonGrid count={20} />}
 
@@ -122,7 +160,7 @@ const HomePage = () => {
         </div>
       </main>
 
-      <a href="#main-content" className="skip-link">Skip to content</a>
+      <Footer />
     </>
   )
 }

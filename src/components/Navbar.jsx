@@ -1,27 +1,95 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { useState, useRef, useEffect } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 
-const Navbar = () => {
+const SearchIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
+    <path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+)
+
+const Navbar = ({ searchTerm, setSearchTerm }) => {
+  const [searchOpen, setSearchOpen] = useState(false)
+  const inputRef = useRef(null)
+  const location = useLocation()
+  const isHome = location.pathname === '/'
+
+  useEffect(() => {
+    if (searchOpen && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [searchOpen])
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape' && searchOpen) {
+        setSearchOpen(false)
+        if (setSearchTerm) setSearchTerm('')
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [searchOpen, setSearchTerm])
+
+  // If there's already a search term, show the input open
+  useEffect(() => {
+    if (searchTerm && searchTerm.length > 0) setSearchOpen(true)
+  }, [searchTerm])
+
   return (
     <nav className="navbar" role="navigation" aria-label="Main navigation">
       <div className="navbar-inner">
-        <Link to="/" className="navbar-brand" aria-label="Movie App by: Justin home">
+        {/* Brand */}
+        <Link to="/" className="navbar-brand" aria-label="MovieApp — home">
           <span className="navbar-logo-icon" aria-hidden="true">🎬</span>
           <span className="navbar-logo-text">
-            Movie App by:<span className="text-gradient"> Justin</span>
+            Movie<span className="text-gradient">App</span>
           </span>
         </Link>
 
-        <div className="navbar-links">
-          <Link to="/" className="navbar-link">Home</Link>
-          <a
-            href="https://www.themoviedb.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="navbar-link navbar-link--muted"
-            title="Powered by TMDB"
-          >
-            Powered by TMDB
-          </a>
+        {/* Right side */}
+        <div className="navbar-right">
+
+          {/* Search — home only */}
+          {isHome && (
+            <div className="navbar-search-wrap">
+              {searchOpen ? (
+                <div className="navbar-search-input-wrap">
+                  <SearchIcon />
+                  <input
+                    ref={inputRef}
+                    type="search"
+                    className="navbar-search-input"
+                    placeholder="Search movies…"
+                    value={searchTerm ?? ''}
+                    onChange={e => setSearchTerm?.(e.target.value)}
+                    aria-label="Search movies"
+                    autoComplete="off"
+                  />
+                  <button
+                    className="navbar-search-close"
+                    onClick={() => { setSearchOpen(false); setSearchTerm?.('') }}
+                    aria-label="Close search"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button
+                  className="navbar-search-btn"
+                  onClick={() => setSearchOpen(true)}
+                  aria-label="Open search"
+                >
+                  <SearchIcon />
+                  <span className="navbar-search-label">Search</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          <div className="navbar-links">
+            <Link to="/" className="navbar-link">Home</Link>
+          </div>
         </div>
       </div>
     </nav>

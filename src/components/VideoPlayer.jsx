@@ -1,35 +1,35 @@
 import { useState, useEffect, useCallback } from 'react'
 
-// ── Servers ──────────────────────────────────────────────────────────────────
-// Each entry is a distinct provider — no duplicate brands/domains.
+// ── Providers ─────────────────────────────────────────────────────────────────
+
 const SERVERS = [
   {
-    id: 'vidsrc-cc',
-    name: 'VidSrc',
+    id:    'vidlink',
+    name:  'VidLink',
     badge: 'HD',
-    getUrl: (id) => `https://vidsrc.cc/v2/embed/movie/${id}`,
+    getUrl: (id) => `https://vidlink.pro/movie/${id}?primaryColor=AB8BFF&secondaryColor=030014`,
   },
   {
-    id: '2embed',
-    name: '2Embed',
-    badge: 'SUB',
-    getUrl: (id) => `https://www.2embed.stream/embed/movie/${id}`,
-  },
-  {
-    id: 'vidlink',
-    name: 'VidLink',
-    badge: '',
-    getUrl: (id) => `https://vidlink.pro/movie/${id}`,
-  },
-  {
-    id: 'multiembed',
-    name: 'MultiEmbed',
+    id:    'vidsrc-me',
+    name:  'VidSrc',
     badge: 'MULTI',
-    getUrl: (id) => `https://multiembed.mov/?video_id=${id}&tmdb=1`,
+    getUrl: (id) => `https://vidsrc.me/embed/movie?tmdb=${id}`,
+  },
+  {
+    id:    'superembed',
+    name:  'SuperEmbed',
+    badge: 'SUB',
+    getUrl: (id) => `https://multiembed.mov/directstream.php?video_id=${id}&tmdb=1`,
+  },
+  {
+    id:    '2embed',
+    name:  '2Embed',
+    badge: '',
+    getUrl: (id) => `https://www.2embed.cc/embed/${id}`,
   },
 ]
 
-// ── Popup / redirect blocker ──────────────────────────────────────────────────
+// ── Popup/redirect blocker ─────────────────────────────────────────────────────
 const usePopupBlocker = () => {
   useEffect(() => {
     const _open = window.open
@@ -44,8 +44,9 @@ const usePopupBlocker = () => {
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
 
-    const _push = history.pushState.bind(history)
+    const _push    = history.pushState.bind(history)
     const _replace = history.replaceState.bind(history)
+
     history.pushState = (...args) => {
       if (args[2] && String(args[2]).startsWith('/')) return _push(...args)
       console.warn('[VideoPlayer] Blocked pushState:', args[2])
@@ -58,7 +59,7 @@ const usePopupBlocker = () => {
     return () => {
       window.open = _open
       window.removeEventListener('beforeunload', handleBeforeUnload)
-      history.pushState = _push
+      history.pushState    = _push
       history.replaceState = _replace
     }
   }, [])
@@ -67,8 +68,8 @@ const usePopupBlocker = () => {
 // ── Component ─────────────────────────────────────────────────────────────────
 const VideoPlayer = ({ tmdbId, title }) => {
   const [activeServer, setActiveServer] = useState(0)
-  const [isLoading, setIsLoading] = useState(true)
-  const [hasError, setHasError] = useState(false)
+  const [isLoading,    setIsLoading]    = useState(true)
+  const [hasError,     setHasError]     = useState(false)
 
   usePopupBlocker()
 
@@ -91,16 +92,17 @@ const VideoPlayer = ({ tmdbId, title }) => {
   return (
     <div className="vp-container">
 
-      {/* ── Server bar ── */}
+      {/* ── Server selector ── */}
       <div className="vp-server-bar">
         <span className="vp-server-label">Stream via:</span>
-        <div className="vp-server-tabs">
+        <div className="vp-server-tabs" role="group" aria-label="Video servers">
           {SERVERS.map((srv, i) => (
             <button
               key={srv.id}
               onClick={() => handleServerChange(i)}
               className={`vp-server-tab${i === activeServer ? ' vp-server-tab--active' : ''}`}
               aria-pressed={i === activeServer}
+              title={`Switch to ${srv.name}`}
             >
               {srv.name}
               {srv.badge && (
@@ -113,15 +115,15 @@ const VideoPlayer = ({ tmdbId, title }) => {
         </div>
       </div>
 
-      {/* ── Player wrap ── */}
+      {/* ── Player ── */}
       <div className="vp-player-wrap">
 
         {/* Loading overlay */}
         {isLoading && (
-          <div className="vp-loading-overlay">
+          <div className="vp-loading-overlay" aria-live="polite">
             <div className="vp-loading-inner">
               <svg className="vp-spinner" viewBox="0 0 50 50" fill="none" aria-hidden="true">
-                <circle cx="25" cy="25" r="20" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
+                <circle cx="25" cy="25" r="20" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
                 <path d="M25 5 A20 20 0 0 1 45 25" stroke="#AB8BFF" strokeWidth="4" strokeLinecap="round" />
               </svg>
               <p className="vp-loading-text">Loading {current.name}…</p>
@@ -131,19 +133,20 @@ const VideoPlayer = ({ tmdbId, title }) => {
 
         {/* Error overlay */}
         {hasError && !isLoading && (
-          <div className="vp-error-overlay">
+          <div className="vp-error-overlay" role="alert">
             <svg className="vp-error-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <circle cx="12" cy="12" r="10" stroke="#f87171" strokeWidth="1.5" />
               <path d="M12 8v4M12 16h.01" stroke="#f87171" strokeWidth="2" strokeLinecap="round" />
             </svg>
             <p className="vp-error-text">{current.name} is unavailable</p>
-            <p className="vp-error-sub">Switch to another server or try again</p>
+            <p className="vp-error-sub">Try switching to another server below</p>
             <button className="vp-retry-btn" onClick={tryNextServer}>
               Try next server →
             </button>
           </div>
         )}
 
+        {/* Iframe — sandbox allows fullscreen + scripts; no top-navigation */}
         <iframe
           key={`${activeServer}-${tmdbId}`}
           src={current.getUrl(tmdbId)}
@@ -151,7 +154,7 @@ const VideoPlayer = ({ tmdbId, title }) => {
           className="vp-iframe"
           onLoad={() => setIsLoading(false)}
           onError={() => { setIsLoading(false); setHasError(true) }}
-          allow="autoplay; fullscreen; picture-in-picture"
+          allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
           allowFullScreen
           referrerPolicy="no-referrer"
         />
@@ -159,7 +162,7 @@ const VideoPlayer = ({ tmdbId, title }) => {
 
       {/* ── Footer hint ── */}
       <p className="vp-hint">
-        If a server doesn't load or subtitles are off, try switching to another.
+        If a server doesn't load or shows an error, switch to another. Subtitles may vary by provider.
       </p>
     </div>
   )
