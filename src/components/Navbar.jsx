@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import SearchSuggestions from './SearchSuggestions'
 
 const SearchIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -8,34 +9,75 @@ const SearchIcon = () => (
   </svg>
 )
 
-const Navbar = ({ searchTerm, setSearchTerm }) => {
-  const [searchOpen, setSearchOpen] = useState(false)
+const Navbar = () => {
+  const [searchOpen,      setSearchOpen]      = useState(false)
+  const [navQuery,        setNavQuery]        = useState('')
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const inputRef = useRef(null)
+  const wrapRef  = useRef(null)
   const location = useLocation()
-  const isHome = location.pathname === '/'
+  const navigate = useNavigate()
+  const isHome   = location.pathname === '/'
 
-  useEffect(() => {
-    if (searchOpen && inputRef.current) inputRef.current.focus()
-  }, [searchOpen])
+  const openSearch = useCallback(() => {
+    setSearchOpen(true)
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }, [])
 
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false)
+    setShowSuggestions(false)
+    setNavQuery('')
+  }, [])
+
+  // '/' global shortcut → focus navbar search
   useEffect(() => {
     const onKey = (e) => {
+      const tag     = document.activeElement?.tagName
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+      if (isInput) return
+      if (e.key === '/') {
+        e.preventDefault()
+        if (!isHome) navigate('/')
+        setTimeout(openSearch, isHome ? 0 : 150)
+      }
       if (e.key === 'Escape' && searchOpen) {
-        setSearchOpen(false)
-        setSearchTerm?.('')
+        if (navQuery) setNavQuery('')
+        else closeSearch()
+        setShowSuggestions(false)
       }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [searchOpen, setSearchTerm])
+  }, [searchOpen, navQuery, isHome, navigate, openSearch, closeSearch])
 
+  // Close suggestions on outside click
   useEffect(() => {
-    if (searchTerm && searchTerm.length > 0) setSearchOpen(true)
-  }, [searchTerm])
+    const onOutside = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setShowSuggestions(false)
+    }
+    document.addEventListener('mousedown', onOutside)
+    return () => document.removeEventListener('mousedown', onOutside)
+  }, [])
+
+  const handleInputChange = (e) => {
+    const val = e.target.value
+    setNavQuery(val)
+    setShowSuggestions(val.length >= 2)
+  }
+
+  const handleSuggestionSelect = useCallback(() => {
+    setShowSuggestions(false)
+    setNavQuery('')
+    setSearchOpen(false)
+  }, [])
 
   return (
-    /* CHANGED: removed "sticky top-0 z-200" — navbar now scrolls with page */
-    <nav className="navbar navbar--relative" role="navigation" aria-label="Main navigation">
+    <nav
+      className="navbar"
+      role="navigation"
+      aria-label="Main navigation"
+    >
       <div className="navbar-inner">
         <Link to="/" className="navbar-brand" aria-label="MovieApp — home">
           <span className="navbar-logo-icon" aria-hidden="true">🎬</span>
@@ -46,36 +88,44 @@ const Navbar = ({ searchTerm, setSearchTerm }) => {
 
         <div className="navbar-right">
           {isHome && (
-            <div className="navbar-search-wrap">
+            /* Position relative here so the absolute suggestions are scoped to this wrapper */
+            <div className="navbar-search-wrap" ref={wrapRef}>
               {searchOpen ? (
-                <div className="navbar-search-input-wrap">
-                  <SearchIcon />
-                  <input
-                    ref={inputRef}
-                    type="search"
-                    className="navbar-search-input"
-                    placeholder="Search movies…"
-                    value={searchTerm ?? ''}
-                    onChange={e => setSearchTerm?.(e.target.value)}
-                    aria-label="Search movies"
-                    autoComplete="off"
+                <>
+                  <div className="navbar-search-input-wrap navbar-search-input-wrap--wide">
+                    <SearchIcon />
+                    <input
+                      ref={inputRef}
+                      type="search"
+                      className="navbar-search-input"
+                      placeholder="Search movies… (Esc to close)"
+                      value={navQuery}
+                      onChange={handleInputChange}
+                      onFocus={() => navQuery.length >= 2 && setShowSuggestions(true)}
+                      aria-label="Search movies"
+                      aria-autocomplete="list"
+                      aria-expanded={showSuggestions}
+                      autoComplete="off"
+                    />
+                    <button className="navbar-search-close" onClick={closeSearch} aria-label="Close search">✕</button>
+                  </div>
+                  <SearchSuggestions
+                    query={navQuery}
+                    isVisible={showSuggestions}
+                    onSelect={handleSuggestionSelect}
+                    onClose={() => setShowSuggestions(false)}
                   />
-                  <button
-                    className="navbar-search-close"
-                    onClick={() => { setSearchOpen(false); setSearchTerm?.('') }}
-                    aria-label="Close search"
-                  >
-                    ✕
-                  </button>
-                </div>
+                </>
               ) : (
                 <button
                   className="navbar-search-btn"
-                  onClick={() => setSearchOpen(true)}
-                  aria-label="Open search"
+                  onClick={openSearch}
+                  aria-label="Open search (press / to focus)"
+                  title="Press / to search"
                 >
                   <SearchIcon />
                   <span className="navbar-search-label">Search</span>
+                  <kbd className="navbar-search-kbd" aria-hidden="true">/</kbd>
                 </button>
               )}
             </div>

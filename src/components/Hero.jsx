@@ -4,14 +4,6 @@ const Hero = ({ searchTerm, setSearchTerm, clearSearch, totalResults, isSearchin
       <div className="hero-bg" aria-hidden="true" />
 
       <div className="hero-content">
-        <p className="hero-eyebrow">Discover · Watch · Explore</p>
-        <h1 className="hero-title">
-          Find <span className="text-gradient">Movies</span> You'll{' '}
-          <span className="text-gradient">Love</span>
-        </h1>
-        <p className="hero-subtitle">
-          Browse thousands of films — trending, top-rated, and beyond.
-        </p>
 
         {/* Search bar */}
         <div className="hero-search" role="search">

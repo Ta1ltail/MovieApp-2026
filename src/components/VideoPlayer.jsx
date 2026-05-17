@@ -1,15 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-
-// ── Providers ─────────────────────────────────────────────────────────────────
+import { useState, useRef, useEffect, useCallback } from 'react'
 
 const SERVERS = [
   {
     id:    'vidsrc-ru',
     name:  'VidSrc',
     badge: 'MULTI',
-    getUrl: (id, subtitleUrl, dsLang) => {
-      let url = `https://vidsrc-embed.ru/embed/movie?tmdb=${id}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false`
-      if (dsLang)      url += `&ds_lang=${dsLang}`
+    getUrl: (id, subtitleUrl, dsLang = 'en') => {
+      let url = `https://vidsrc-embed.ru/embed/movie?tmdb=${id}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
       if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
       return url
     },
@@ -28,7 +25,8 @@ const SERVERS = [
     id:    'vidlink.pro',
     name:  'VidLink',
     badge: 'SUB',
-    getUrl: (id) => `https://vidlink.pro/movie/${id}?primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&tmdb=1`,
+    getUrl: (id) =>
+      `https://vidlink.pro/movie/${id}?primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&tmdb=1&defaultSubtitle=en`,
   },
   {
     id:    '2embed.cc',
@@ -59,11 +57,12 @@ const usePopupBlocker = (wrapRef) => {
     window.addEventListener('beforeunload', onUnload)
 
     let lastClick = 0
+    const el = wrapRef.current
     const onClickCapture = (e) => {
       const now = Date.now()
       if (now - lastClick > 600) { lastClick = now; e.stopPropagation() }
     }
-    wrapRef.current?.addEventListener('click', onClickCapture, true)
+    el?.addEventListener('click', onClickCapture, true)
 
     const observer = new MutationObserver((mutations) => {
       for (const { addedNodes } of mutations)
@@ -78,15 +77,43 @@ const usePopupBlocker = (wrapRef) => {
       history.pushState    = _push
       history.replaceState = _replace
       window.removeEventListener('beforeunload', onUnload)
-      wrapRef.current?.removeEventListener('click', onClickCapture, true)
+      el?.removeEventListener('click', onClickCapture, true)
       observer.disconnect()
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 }
+
+// ── Shortcuts bar — rendered inside the player container ──────────────────────
+
+const VP_SHORTCUTS = [
+  { key: 'Space', desc: 'Play/Pause' },
+  { key: 'F',     desc: 'Fullscreen' },
+  { key: 'M',     desc: 'Mute' },
+  { key: '← →',  desc: 'Seek' },
+  { key: '?',     desc: 'Help' },
+]
+
+const ShortcutsBar = () => (
+  <div className="vp-shortcuts-bar" aria-label="Keyboard shortcuts">
+    <span className="vp-shortcuts-label">Shortcuts</span>
+    {VP_SHORTCUTS.map(({ key, desc }) => (
+      <span key={key} className="vp-shortcut-item">
+        <kbd className="vp-shortcut-key">{key}</kbd>
+        <span className="vp-shortcut-desc">{desc}</span>
+      </span>
+    ))}
+  </div>
+)
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-const VideoPlayer = ({ tmdbId, title, subtitleUrl = null, subtitleLabel = 'English' }) => {
+const VideoPlayer = ({
+  tmdbId,
+  title,
+  subtitleUrl   = null,
+  subtitleLabel = 'English',
+  defaultLang   = 'en',
+}) => {
   const [activeServer, setActiveServer] = useState(0)
   const [isLoading,    setIsLoading]    = useState(true)
   const [hasError,     setHasError]     = useState(false)
@@ -98,6 +125,22 @@ const VideoPlayer = ({ tmdbId, title, subtitleUrl = null, subtitleLabel = 'Engli
 
   const handleServerChange = useCallback((i) => { if (i !== activeServer) setActiveServer(i) }, [activeServer])
   const tryNextServer      = useCallback(() => setActiveServer((s) => (s + 1) % SERVERS.length), [])
+
+  // Keyboard: F = fullscreen
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'f' || e.key === 'F') {
+        const iframe = wrapRef.current?.querySelector('iframe')
+        if (iframe && document.activeElement !== document.body) return
+        if (iframe) {
+          const req = iframe.requestFullscreen ?? iframe.webkitRequestFullscreen
+          req?.call(iframe)
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const current = SERVERS[activeServer]
 
@@ -129,7 +172,6 @@ const VideoPlayer = ({ tmdbId, title, subtitleUrl = null, subtitleLabel = 'Engli
 
       {/* ── Player ── */}
       <div className="vp-player-wrap" ref={wrapRef}>
-
         {isLoading && (
           <div className="vp-loading-overlay" aria-live="polite">
             <div className="vp-loading-inner">
@@ -156,7 +198,7 @@ const VideoPlayer = ({ tmdbId, title, subtitleUrl = null, subtitleLabel = 'Engli
 
         <iframe
           key={`${activeServer}-${tmdbId}`}
-          src={current.getUrl(tmdbId, subtitleUrl, subtitleLabel)}
+          src={current.getUrl(tmdbId, subtitleUrl, subtitleLabel || defaultLang)}
           title={`${title} — ${current.name}`}
           className="vp-iframe"
           onLoad={() => setIsLoading(false)}
@@ -168,9 +210,13 @@ const VideoPlayer = ({ tmdbId, title, subtitleUrl = null, subtitleLabel = 'Engli
         />
       </div>
 
+      {/* ── Hint ── */}
       <p className="vp-hint">
-        If a server doesn't load or shows an error, switch to another. Subtitles may vary by provider.
+        English subtitles are enabled by default where supported. If a server doesn't load, switch to another.
       </p>
+
+      {/* ── Shortcuts — integrated inside the player container ── */}
+      <ShortcutsBar />
     </div>
   )
 }

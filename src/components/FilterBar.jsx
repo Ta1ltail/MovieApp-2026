@@ -1,21 +1,26 @@
 import { useState, useCallback, useMemo } from 'react'
 import { CATEGORIES } from '../lib/tmdb'
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const YEARS = (() => {
-  const cur = new Date().getFullYear()
-  return Array.from({ length: 35 }, (_, i) => cur - i)
-})()
-
-const RATINGS = [
-  { value: '',  label: 'Any Rating' },
-  { value: '9', label: '9+ ★' },
-  { value: '8', label: '8+ ★' },
-  { value: '7', label: '7+ ★' },
-  { value: '6', label: '6+ ★' },
+const YEAR_PRESETS = [
+  { label: String(new Date().getFullYear()), value: String(new Date().getFullYear()) },
+  { label: '2020s', value: '2020s' },
+  { label: '2010s', value: '2010s' },
+  { label: '2000s', value: '2000s' },
+  { label: '1990s', value: '1990s' },
 ]
 
-// ── Icons ─────────────────────────────────────────────────────────────────────
+const RATINGS = [
+  { value: '9', label: '+9' },
+  { value: '8', label: '+8' },
+  { value: '7', label: '+7' },
+  { value: '6', label: '+6' },
+  { value: '5', label: '+5' },
+  { value: '4', label: '+4' },
+  { value: '3', label: '+3' },
+  { value: '2', label: '+2' },
+  { value: '1', label: '+1' },
+]
+
 const IconFilter = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
     <path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -31,68 +36,50 @@ const IconChevron = ({ open }) => (
   </svg>
 )
 
-const IconGenre = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-  </svg>
-)
-
-const IconYear = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
-    <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-  </svg>
-)
-
-const IconStar = () => (
-  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-      stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-  </svg>
-)
-
-// ── FilterBar ─────────────────────────────────────────────────────────────────
 const FilterBar = ({
   category, setCategory,
-  draftFilters, updateDraftFilter,
-  appliedFilters, removeAppliedFilter,
+  draftFilters, updateDraftFilter, toggleDraftGenre,
+  appliedFilters, removeAppliedFilter, removeAppliedGenre,
   applyFilters, resetFilters,
   activeFilterCount, hasDraftChanges,
   genres,
   isSearching,
 }) => {
-  const [panelOpen, setPanelOpen] = useState(false)
+  const [openSection, setOpenSection] = useState(null)
 
-  const togglePanel = useCallback(() => setPanelOpen(v => !v), [])
+  const toggleSection = useCallback((section) => {
+    setOpenSection(v => v === section ? null : section)
+  }, [])
 
   const handleApply = useCallback(() => {
     applyFilters()
-    setPanelOpen(false)
+    setOpenSection(null)
   }, [applyFilters])
 
   const handleReset = useCallback(() => {
     resetFilters()
-    setPanelOpen(false)
+    setOpenSection(null)
   }, [resetFilters])
 
-  // Build chips from committed appliedFilters
+  // Build active chips
   const activeChips = useMemo(() => {
     const chips = []
-    if (appliedFilters.genreId) {
-      const g = genres.find(g => String(g.id) === String(appliedFilters.genreId))
-      if (g) chips.push({ key: 'genreId', label: g.name })
-    }
-    if (appliedFilters.year)      chips.push({ key: 'year',      label: appliedFilters.year })
-    if (appliedFilters.minRating) chips.push({ key: 'minRating', label: `${appliedFilters.minRating}+ ★` })
+    appliedFilters.genreIds.forEach(id => {
+      const g = genres.find(g => String(g.id) === String(id))
+      if (g) chips.push({ key: `genre-${id}`, label: g.name, onRemove: () => removeAppliedGenre(id) })
+    })
+    if (appliedFilters.year)
+      chips.push({ key: 'year', label: appliedFilters.year, onRemove: () => removeAppliedFilter('year') })
+    if (appliedFilters.minRating)
+      chips.push({ key: 'minRating', label: `${appliedFilters.minRating}+ ★`, onRemove: () => removeAppliedFilter('minRating') })
     return chips
-  }, [appliedFilters, genres])
+  }, [appliedFilters, genres, removeAppliedGenre, removeAppliedFilter])
 
   return (
     <div className="filterbar-v2">
 
-      {/* ── Single row: category tabs + filter button ── */}
+      {/* ── Row 1: Category tabs + filter trigger buttons ── */}
       <div className="filterbar-top-row">
-        {/* Category tabs — hidden during search */}
         {!isSearching && (
           <>
             <div className="filterbar-tabs" role="tablist" aria-label="Movie categories">
@@ -112,141 +99,160 @@ const FilterBar = ({
           </>
         )}
 
-        {/* Filter trigger button */}
-        <button
-          className={[
-            'filter-trigger-btn',
-            panelOpen         ? 'filter-trigger-btn--open'   : '',
-            activeFilterCount ? 'filter-trigger-btn--active' : '',
-          ].filter(Boolean).join(' ')}
-          onClick={togglePanel}
-          aria-expanded={panelOpen}
-          aria-controls="filter-panel"
-        >
-          <IconFilter />
-          <span>Filters</span>
-          {activeFilterCount > 0 && (
-            <span className="filter-trigger-badge" aria-label={`${activeFilterCount} active`}>
-              {activeFilterCount}
-            </span>
-          )}
-          <IconChevron open={panelOpen} />
-        </button>
+        <div className="filterbar-trigger-group">
+          {/* Genre */}
+          <button
+            className={[
+              'filter-trigger-btn',
+              openSection === 'genre'        ? 'filter-trigger-btn--open'   : '',
+              appliedFilters.genreIds.length ? 'filter-trigger-btn--active' : '',
+            ].filter(Boolean).join(' ')}
+            onClick={() => toggleSection('genre')}
+            aria-expanded={openSection === 'genre'}
+          >
+            <IconFilter />
+            Genre
+            {appliedFilters.genreIds.length > 0 && (
+              <span className="filter-trigger-badge">{appliedFilters.genreIds.length}</span>
+            )}
+            <IconChevron open={openSection === 'genre'} />
+          </button>
 
-        {/* Active filter chips — inline with the row */}
-        {activeChips.length > 0 && (
-          <div className="filter-chips" role="group" aria-label="Active filters">
-            {activeChips.map((chip) => (
-              <span key={chip.key} className="filter-chip">
-                {chip.label}
-                <button
-                  className="filter-chip-remove"
-                  onClick={() => removeAppliedFilter(chip.key)}
-                  aria-label={`Remove ${chip.label} filter`}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-            <button className="filter-clear-all" onClick={handleReset} aria-label="Clear all filters">
-              Clear all
-            </button>
-          </div>
-        )}
+          {/* Year */}
+          <button
+            className={[
+              'filter-trigger-btn',
+              openSection === 'year' ? 'filter-trigger-btn--open'   : '',
+              appliedFilters.year    ? 'filter-trigger-btn--active' : '',
+            ].filter(Boolean).join(' ')}
+            onClick={() => toggleSection('year')}
+            aria-expanded={openSection === 'year'}
+          >
+            Year
+            {appliedFilters.year && <span className="filter-trigger-badge">1</span>}
+            <IconChevron open={openSection === 'year'} />
+          </button>
+
+          {/* Rating */}
+          <button
+            className={[
+              'filter-trigger-btn',
+              openSection === 'rating'  ? 'filter-trigger-btn--open'   : '',
+              appliedFilters.minRating  ? 'filter-trigger-btn--active' : '',
+            ].filter(Boolean).join(' ')}
+            onClick={() => toggleSection('rating')}
+            aria-expanded={openSection === 'rating'}
+          >
+            Rating
+            {appliedFilters.minRating && <span className="filter-trigger-badge">1</span>}
+            <IconChevron open={openSection === 'rating'} />
+          </button>
+        </div>
       </div>
 
-      {/* ── Collapsible filter panel ── */}
-      <div
-        id="filter-panel"
-        className={`filter-panel${panelOpen ? ' filter-panel--open' : ''}`}
-        aria-hidden={!panelOpen}
-        inert={!panelOpen ? '' : undefined}
-      >
-        <div className="filter-panel-inner">
-          <div className="filter-panel-grid">
-
-            {/* Genre */}
-            <div className="filter-input-group">
-              <label className="filter-input-label" htmlFor="fp-genre">
-                <IconGenre /> Genre
-              </label>
-              <div className="filter-select-wrap">
-                <select
-                  id="fp-genre"
-                  className="filter-select-v2"
-                  value={draftFilters.genreId}
-                  onChange={e => updateDraftFilter('genreId', e.target.value)}
-                >
-                  <option value="">All Genres</option>
-                  {genres.map(g => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
-                {draftFilters.genreId && <span className="filter-select-dot" aria-hidden="true" />}
-              </div>
-            </div>
-
-            {/* Year */}
-            <div className="filter-input-group">
-              <label className="filter-input-label" htmlFor="fp-year">
-                <IconYear /> Year
-              </label>
-              <div className="filter-select-wrap">
-                <select
-                  id="fp-year"
-                  className="filter-select-v2"
-                  value={draftFilters.year}
-                  onChange={e => updateDraftFilter('year', e.target.value)}
-                >
-                  <option value="">Any Year</option>
-                  {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                </select>
-                {draftFilters.year && <span className="filter-select-dot" aria-hidden="true" />}
-              </div>
-            </div>
-
-            {/* Min Rating */}
-            <div className="filter-input-group">
-              <label className="filter-input-label" htmlFor="fp-rating">
-                <IconStar /> Min Rating
-              </label>
-              <div className="filter-select-wrap">
-                <select
-                  id="fp-rating"
-                  className="filter-select-v2"
-                  value={draftFilters.minRating}
-                  onChange={e => updateDraftFilter('minRating', e.target.value)}
-                >
-                  {RATINGS.map(r => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
-                  ))}
-                </select>
-                {draftFilters.minRating && <span className="filter-select-dot" aria-hidden="true" />}
-              </div>
-            </div>
-          </div>
-
-          {/* ── Action buttons ── */}
-          <div className="filter-panel-actions">
-            <div className="filter-panel-hint">
-              {hasDraftChanges && (
-                <span className="filter-hint-text">Unsaved changes — click Apply to update</span>
-              )}
-            </div>
-            <div className="filter-panel-btns">
-              <button className="filter-reset-btn" onClick={handleReset}>
-                Reset
-              </button>
+      {/* ── Row 2: Active filter chips — own row, never causes top-row shift ── */}
+      {activeChips.length > 0 && (
+        <div className="filterbar-chips-row" role="group" aria-label="Active filters">
+          {activeChips.map((chip) => (
+            <span key={chip.key} className="filter-chip">
+              {chip.label}
               <button
-                className={`filter-apply-btn${hasDraftChanges ? ' filter-apply-btn--highlight' : ''}`}
-                onClick={handleApply}
-              >
-                Apply Filters
-              </button>
+                className="filter-chip-remove"
+                onClick={chip.onRemove}
+                aria-label={`Remove ${chip.label} filter`}
+              >×</button>
+            </span>
+          ))}
+          <button className="filter-clear-all" onClick={handleReset}>Clear all</button>
+        </div>
+      )}
+
+      {/* ── Collapsible filter panel ── */}
+      {openSection && (
+        <div className="filter-panel filter-panel--open" style={{ maxHeight: 'none', pointerEvents: 'auto', opacity: 1 }}>
+          <div className="filter-panel-inner">
+
+            {openSection === 'genre' && (
+              <div>
+                <p className="filter-input-label" style={{ marginBottom: '0.75rem' }}>Select Genres (multi)</p>
+                <div className="filter-toggle-grid">
+                  {genres.map(g => {
+                    const active = draftFilters.genreIds.includes(String(g.id))
+                    return (
+                      <button
+                        key={g.id}
+                        className={`filter-toggle-btn${active ? ' filter-toggle-btn--active' : ''}`}
+                        onClick={() => toggleDraftGenre(g.id)}
+                      >
+                        {g.name}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {openSection === 'year' && (
+              <div>
+                <p className="filter-input-label" style={{ marginBottom: '0.75rem' }}>Select Year / Decade</p>
+                <div className="filter-toggle-grid">
+                  <button
+                    className={`filter-toggle-btn${!draftFilters.year ? ' filter-toggle-btn--active' : ''}`}
+                    onClick={() => updateDraftFilter('year', '')}
+                  >Any</button>
+                  {YEAR_PRESETS.map(p => (
+                    <button
+                      key={p.value}
+                      className={`filter-toggle-btn${draftFilters.year === p.value ? ' filter-toggle-btn--active' : ''}`}
+                      onClick={() => updateDraftFilter('year', draftFilters.year === p.value ? '' : p.value)}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {openSection === 'rating' && (
+              <div>
+                <p className="filter-input-label" style={{ marginBottom: '0.75rem' }}>Minimum Rating</p>
+                <div className="filter-toggle-grid">
+                  <button
+                    className={`filter-toggle-btn${!draftFilters.minRating ? ' filter-toggle-btn--active' : ''}`}
+                    onClick={() => updateDraftFilter('minRating', '')}
+                  >Any</button>
+                  {RATINGS.map(r => (
+                    <button
+                      key={r.value}
+                      className={`filter-toggle-btn${draftFilters.minRating === r.value ? ' filter-toggle-btn--active' : ''}`}
+                      onClick={() => updateDraftFilter('minRating', draftFilters.minRating === r.value ? '' : r.value)}
+                    >
+                      ★ {r.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="filter-panel-actions">
+              <div className="filter-panel-hint">
+                {hasDraftChanges && (
+                  <span className="filter-hint-text">Unsaved changes — click Apply</span>
+                )}
+              </div>
+              <div className="filter-panel-btns">
+                <button className="filter-reset-btn" onClick={handleReset}>Reset</button>
+                <button
+                  className={`filter-apply-btn${hasDraftChanges ? ' filter-apply-btn--highlight' : ''}`}
+                  onClick={handleApply}
+                >
+                  Apply Filters
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

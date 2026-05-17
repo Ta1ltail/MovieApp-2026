@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { fetchSimilarMovies, getPosterUrl } from '../lib/tmdb'
 import LazyImage from './LazyImage'
 
@@ -9,8 +9,10 @@ const StarIcon = () => (
   </svg>
 )
 
+const slugify = (str) =>
+  str?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') ?? ''
+
 const SimilarMovies = ({ movieId }) => {
-  const navigate = useNavigate()
   const [movies, setMovies] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -53,14 +55,13 @@ const SimilarMovies = ({ movieId }) => {
             const rating = movie.vote_average?.toFixed(1) ?? 'N/A'
             const poster = getPosterUrl(movie.poster_path, 'w342') ?? '/no-movie.svg'
             return (
-              <article
+              // Use Link so all native browser interactions work
+              <Link
                 key={movie.id}
+                to={`/movie/${movie.id}?title=${slugify(movie.title)}`}
                 className="similar-card"
-                onClick={() => navigate(`/movie/${movie.id}`)}
-                onKeyDown={e => { if (e.key === 'Enter') navigate(`/movie/${movie.id}`) }}
-                role="button"
-                tabIndex={0}
                 aria-label={`${movie.title} (${year})`}
+                style={{ textDecoration: 'none' }}
               >
                 <div className="similar-poster-wrap">
                   <LazyImage src={poster} alt={`${movie.title} poster`} className="similar-poster" />
@@ -77,7 +78,7 @@ const SimilarMovies = ({ movieId }) => {
                     <span className="similar-year">{year}</span>
                   </div>
                 </div>
-              </article>
+              </Link>
             )
           })}
         </div>

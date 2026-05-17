@@ -5,6 +5,7 @@ import ThemeToggle from './components/ThemeToggle'
 import BackToTop from './components/BackToTop'
 import HomePage from './pages/HomePage'
 import MovieDetailsPage from './pages/MovieDetailsPage'
+import { useKeyboardShortcuts, KeyboardShortcutsModal } from './components/useKeyboardShortcuts'
 
 const PageTransitionWrapper = ({ children }) => {
   const location = useLocation()
@@ -25,9 +26,11 @@ const PageTransitionWrapper = ({ children }) => {
   )
 }
 
-const App = () => {
+const AppInner = () => {
+  const { shortcutsOpen, closeShortcuts } = useKeyboardShortcuts()
+
   return (
-    <ThemeProvider>
+    <>
       <PageTransitionWrapper>
         <Routes>
           <Route path="/"          element={<HomePage />} />
@@ -36,8 +39,15 @@ const App = () => {
       </PageTransitionWrapper>
       <ThemeToggle />
       <BackToTop />
-    </ThemeProvider>
+      <KeyboardShortcutsModal isOpen={shortcutsOpen} onClose={closeShortcuts} />
+    </>
   )
 }
+
+const App = () => (
+  <ThemeProvider>
+    <AppInner />
+  </ThemeProvider>
+)
 
 export default App

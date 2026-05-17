@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { getPosterUrl } from '../lib/tmdb'
 import LazyImage from './LazyImage'
 
@@ -14,41 +14,28 @@ const StarIcon = () => (
   </svg>
 )
 
-// Slugify title for URL readability
 const slugify = (str) =>
   str?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') ?? ''
 
 const MovieCard = ({ movie }) => {
-  const navigate = useNavigate()
   const { id, title, vote_average, poster_path, release_date, original_language } = movie
 
-  const posterUrl = getPosterUrl(poster_path, 'w342') ?? '/no-movie.svg'
-  const year      = release_date?.split('-')[0] ?? 'N/A'
-  const rating    = vote_average ? vote_average.toFixed(1) : 'N/A'
-  const lang      = original_language?.toUpperCase() ?? '—'
-
-  const ratingColor = vote_average >= 8 ? '#4ade80' : vote_average >= 6.5 ? '#f5c518' : '#9ca4ab'
-
-  // Navigate with title param for shareable, readable URLs: /movie/12345?title=the-avengers
-  const handleClick = () => navigate(`/movie/${id}?title=${slugify(title)}`)
-  const handleKey   = (e) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      handleClick()
-    }
-  }
+  const posterUrl    = getPosterUrl(poster_path, 'w342') ?? '/no-movie.svg'
+  const year         = release_date?.split('-')[0] ?? 'N/A'
+  const rating       = vote_average ? vote_average.toFixed(1) : 'N/A'
+  const lang         = original_language?.toUpperCase() ?? '—'
+  const ratingColor  = vote_average >= 8 ? '#4ade80' : vote_average >= 6.5 ? '#f5c518' : '#9ca4ab'
 
   return (
-    <article
+    <Link
+      to={`/movie/${id}?title=${slugify(title)}`}
       className="movie-card"
-      onClick={handleClick}
-      onKeyDown={handleKey}
-      role="button"
-      tabIndex={0}
       aria-label={`${title} (${year}) — Rating: ${rating}`}
+      style={{ textDecoration: 'none' }}
     >
       <div className="movie-card-poster-wrap">
         <LazyImage src={posterUrl} alt={`${title} poster`} className="movie-card-poster" />
+
         <div className="movie-card-play-overlay" aria-hidden="true">
           <div className="movie-card-play-btn"><PlayIcon /></div>
         </div>
@@ -65,7 +52,7 @@ const MovieCard = ({ movie }) => {
           <span className="movie-card-lang">{lang}</span>
         </div>
       </div>
-    </article>
+    </Link>
   )
 }
 
