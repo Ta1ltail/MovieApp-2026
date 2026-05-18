@@ -6,7 +6,7 @@ const SERVERS = [
     name:  'VidSrc',
     badge: 'MULTI',
     getUrl: (id, subtitleUrl, dsLang = 'en') => {
-      let url = `https://vidsrc-embed.ru/embed/movie?tmdb=${id}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
+      let url = `https://vidsrc-embed.ru/embed/movie?tmdb=${id}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}&touch=0&controls=true`
       if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
       return url
     },
@@ -26,7 +26,7 @@ const SERVERS = [
     name:  'VidLink',
     badge: 'SUB',
     getUrl: (id) =>
-      `https://vidlink.pro/movie/${id}?primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&tmdb=1&defaultSubtitle=en`,
+      `https://vidlink.pro/movie/${id}?primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&title=true&poster=true&autoplay=false&nextbutton=false&tmdb=1&defaultSubtitle=en`
   },
   {
     id:    '2embed.cc',
@@ -38,7 +38,8 @@ const SERVERS = [
 
 // ── Popup/redirect blocker ─────────────────────────────────────────────────────
 
-const usePopupBlocker = (wrapRef) => {
+// ── Popup/redirect blocker ─────────────────────────────────────────────────────
+const usePopupBlocker = () => {
   useEffect(() => {
     const _open    = window.open
     const _push    = history.pushState.bind(history)
@@ -47,40 +48,40 @@ const usePopupBlocker = (wrapRef) => {
     window.open = () => null
 
     try { window.location.assign = window.location.replace = () => {} } catch {}
-    try { Object.defineProperty(window, 'top', { get: () => window, configurable: true }) } catch {}
-
+    
     const isValidPath = (url) => url && String(url).startsWith('/')
-    history.pushState    = (...a) => isValidPath(a[2]) && _push(...a)
-    history.replaceState = (...a) => isValidPath(a[2]) && _replace(...a)
+    history.pushState    = (...a) => { if (isValidPath(a[2])) _push(...a) }
+    history.replaceState = (...a) => { if (isValidPath(a[2])) _replace(...a) }
 
     const onUnload = (e) => { e.preventDefault(); e.returnValue = '' }
     window.addEventListener('beforeunload', onUnload)
 
-    let lastClick = 0
-    const el = wrapRef.current
-    const onClickCapture = (e) => {
-      const now = Date.now()
-      if (now - lastClick > 600) { lastClick = now; e.stopPropagation() }
-    }
-    el?.addEventListener('click', onClickCapture, true)
-
     const observer = new MutationObserver((mutations) => {
-      for (const { addedNodes } of mutations)
-        for (const node of addedNodes)
-          if (node.tagName === 'SCRIPT' || (node.tagName === 'IFRAME' && !node.classList.contains('vp-iframe')))
-            node.remove()
+      for (const { addedNodes, target } of mutations) {
+        // only act on direct body children, not inside iframes
+        if (target !== document.body) continue
+        for (const node of addedNodes) {
+          if (
+            node.nodeType !== 1 ||
+            node.classList?.contains('vp-iframe')
+          ) continue
+          if (
+            node.tagName === 'SCRIPT' ||
+            node.tagName === 'IFRAME'
+          ) node.remove()
+        }
+      }
     })
-    observer.observe(document.body, { childList: true, subtree: true })
+    observer.observe(document.body, { childList: true })
 
     return () => {
       window.open = _open
       history.pushState    = _push
       history.replaceState = _replace
       window.removeEventListener('beforeunload', onUnload)
-      el?.removeEventListener('click', onClickCapture, true)
       observer.disconnect()
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 }
 
 // ── Shortcuts bar — rendered inside the player container ──────────────────────
@@ -119,7 +120,7 @@ const VideoPlayer = ({
   const [hasError,     setHasError]     = useState(false)
   const wrapRef = useRef(null)
 
-  usePopupBlocker(wrapRef)
+  usePopupBlocker()
 
   useEffect(() => { setIsLoading(true); setHasError(false) }, [activeServer, tmdbId])
 
@@ -203,10 +204,20 @@ const VideoPlayer = ({
           className="vp-iframe"
           onLoad={() => setIsLoading(false)}
           onError={() => { setIsLoading(false); setHasError(true) }}
-          allow="autoplay; fullscreen *; picture-in-picture *; encrypted-media"
+
+          // ✅ expanded permissions — pointer-lock lets JW Player properly
+          //    capture mouse for fullscreen; display-capture, gyroscope help
+          //    with responsive player detection
+          allow="autoplay; fullscreen *; picture-in-picture *; encrypted-media; pointer-lock *; display-capture *; gyroscope *; accelerometer *"
           allowFullScreen
-          referrerPolicy="origin"
-          scrolling="no"
+
+          // ✅ CHANGED: "origin" strips the path and can trigger restricted
+          //    mode on some embed providers. "no-referrer-when-downgrade"
+          //    sends the full URL which VidSrc expects for whitelisting
+          referrerPolicy="no-referrer-when-downgrade"
+
+          // ✅ REMOVED: scrolling="no" — deprecated attribute, can interfere
+          //    with internal player scroll handling on some browsers
         />
       </div>
 
