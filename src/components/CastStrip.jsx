@@ -1,18 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { getProfileUrl } from '../lib/tmdb'
-
-const ArrowIcon = ({ dir }) => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    aria-hidden="true"
-    style={{ transform: dir === 'left' ? 'rotate(180deg)' : undefined }}
-  >
-    <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-)
+import { ChevronIcon } from './icons'
 
 const ScrollButtons = ({ onScroll, showLeft, showRight }) => {
   if (!showLeft && !showRight) return null
@@ -25,7 +13,7 @@ const ScrollButtons = ({ onScroll, showLeft, showRight }) => {
         disabled={!showLeft}
         aria-label="See previous cast members"
       >
-        <ArrowIcon dir="left" />
+        <ChevronIcon size={18} dir="left" />
       </button>
       <button
         type="button"
@@ -34,7 +22,7 @@ const ScrollButtons = ({ onScroll, showLeft, showRight }) => {
         disabled={!showRight}
         aria-label="See more cast members"
       >
-        <ArrowIcon dir="right" />
+        <ChevronIcon size={18} />
       </button>
     </div>
   )

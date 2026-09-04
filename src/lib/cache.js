@@ -2,14 +2,14 @@ const cache = new Map()
 const TTL = 5 * 60 * 1000
 const MAX_ENTRIES = 200
 
-export const getCached = (key) => {
+const getCached = (key) => {
   const entry = cache.get(key)
   if (!entry) return null
   if (Date.now() - entry.ts > TTL) { cache.delete(key); return null }
   return entry.data
 }
 
-export const setCached = (key, data) => {
+const setCached = (key, data) => {
   // Re-insert to keep recency order, then evict the oldest entry if over budget.
   if (cache.has(key)) cache.delete(key)
   cache.set(key, { data, ts: Date.now() })

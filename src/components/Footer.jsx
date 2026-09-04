@@ -7,37 +7,22 @@ const GitHubIcon = () => (
 const Footer = () => (
   <footer className="site-footer" role="contentinfo">
     <div className="site-footer-inner">
-      {/* Brand */}
-      <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-        🎬 Binge
-        <span style={{
-          background: 'linear-gradient(90deg,#D6C7FF,#AB8BFF)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-        }}>Time © {new Date().getFullYear()}</span>
+      <span className="site-footer-brand">
+        🎬 Binge<span className="text-gradient">Time</span> © {new Date().getFullYear()}
       </span>
 
       <span className="site-footer-sep" aria-hidden="true">·</span>
 
-      <span style={{ fontSize: '0.72rem', color: 'var(--color-accent)', fontWeight: 600, letterSpacing: '0.04em' }}>
-        Official release - v4.0.1
-      </span>
-
-      <span className="site-footer-sep" aria-hidden="true">·</span>
-
-      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-        Personal project — not for commercial use
-      </span>
+      <span className="site-footer-note">Personal project — not for commercial use</span>
 
       <span className="site-footer-sep" aria-hidden="true">·</span>
 
       <a
         href="https://github.com/Ta1ltail"
-        className="site-footer-link"
+        className="site-footer-link site-footer-link--github"
         target="_blank"
         rel="noopener noreferrer"
         aria-label="GitHub profile"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
       >
         <GitHubIcon />
         GitHub

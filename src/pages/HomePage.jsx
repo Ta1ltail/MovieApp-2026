@@ -46,7 +46,7 @@ const HomePage = () => {
       <div className="homepage-body" ref={listingRef}>
         <section className="movies-section" aria-label={hasSearch ? 'Search results' : 'Trending now'}>
           {hasSearch && totalResults > 0 && (
-            <p className="search-results-count" style={{ marginBottom: '1rem' }}>
+            <p className="search-results-count">
               {totalResults.toLocaleString()} result{totalResults !== 1 ? 's' : ''} found
             </p>
           )}
@@ -56,7 +56,11 @@ const HomePage = () => {
           ) : isLoading ? (
             <SkeletonGrid count={20} />
           ) : items.length === 0 ? (
-            <EmptyState searchTerm={searchTerm} onClear={clearSearch} />
+            <EmptyState
+              searchTerm={searchTerm}
+              onClear={clearSearch}
+              heading={hasSearch ? 'No results found' : 'Nothing trending right now'}
+            />
           ) : (
             <ul className="movies-grid" aria-label={hasSearch ? 'Search results list' : 'Trending movies and TV series'}>
               {items.map(media => (

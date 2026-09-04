@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { fetchMixedTrending, fetchMixedSearch } from '../lib/tmdb'
-import { useDebounce } from './useMediaBrowser'
+import { useDebounce } from './useDebounce'
 
 /**
  * useMixedFeed — homepage feed that mixes Movies and TV Series.

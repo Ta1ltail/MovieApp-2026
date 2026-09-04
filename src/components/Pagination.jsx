@@ -1,23 +1,9 @@
-const MAX_VISIBLE = 5
+import { buildPages } from '../lib/utils'
 
 const Pagination = ({ page, totalPages, onPageChange }) => {
   if (totalPages <= 1) return null
 
-  const getPages = () => {
-    if (totalPages <= MAX_VISIBLE) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1)
-    }
-    const half = Math.floor(MAX_VISIBLE / 2)
-    let start = Math.max(1, page - half)
-    let end = Math.min(totalPages, start + MAX_VISIBLE - 1)
-    if (end - start < MAX_VISIBLE - 1) start = Math.max(1, end - MAX_VISIBLE + 1)
-    const pages = Array.from({ length: end - start + 1 }, (_, i) => start + i)
-    if (start > 1) pages.unshift('…start')
-    if (end < totalPages) pages.push('…end')
-    return pages
-  }
-
-  const pages = getPages()
+  const pages = buildPages(page, totalPages)
 
   return (
     <nav className="pagination" aria-label="Movie list pagination" role="navigation">

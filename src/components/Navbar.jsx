@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import SearchSuggestions from './SearchSuggestions'
-import AuthModal from './AuthModal'
 import { useAuth } from '../contexts/AuthContext'
 
 const SearchIcon = () => (
@@ -29,7 +28,6 @@ const Navbar = () => {
   const [searchOpen,      setSearchOpen]      = useState(false)
   const [navQuery,        setNavQuery]        = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const [authOpen,        setAuthOpen]        = useState(false)
   const [userMenuOpen,    setUserMenuOpen]    = useState(false)
   const inputRef = useRef(null)
   const wrapRef  = useRef(null)
@@ -215,20 +213,17 @@ const Navbar = () => {
               )}
             </div>
           ) : (
-            <button
-              type="button"
+            <Link
+              to="/login"
               className="navbar-auth-btn"
-              onClick={() => setAuthOpen(true)}
-              aria-haspopup="dialog"
+              state={{ from: location.pathname + location.search }}
             >
               <UserIcon />
               <span className="navbar-auth-label">Log in</span>
-            </button>
+            </Link>
           )}
         </div>
       </div>
-
-      <AuthModal isOpen={authOpen} onClose={() => setAuthOpen(false)} />
     </nav>
   )
 }

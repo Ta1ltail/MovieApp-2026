@@ -1,14 +1,26 @@
+import { Suspense, lazy, useEffect, useRef } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
-import { useEffect, useRef } from 'react'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AuthProvider } from './contexts/AuthContext'
 import ThemeToggle from './components/ThemeToggle'
 import BackToTop from './components/BackToTop'
-import HomePage from './pages/HomePage'
-import BrowsePage from './pages/BrowsePage'
-import MediaDetailsPage from './pages/MediaDetailsPage'
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
+
+// Code-split each route so visitors only download the page they open.
+const HomePage          = lazy(() => import('./pages/HomePage'))
+const BrowsePage        = lazy(() => import('./pages/BrowsePage'))
+const MediaDetailsPage  = lazy(() => import('./pages/MediaDetailsPage'))
+const LoginPage         = lazy(() => import('./pages/LoginPage'))
+
+const RouteFallback = () => (
+  <div className="route-fallback" role="status" aria-label="Loading page">
+    <svg className="route-fallback-spinner" viewBox="0 0 50 50" fill="none" aria-hidden="true">
+      <circle cx="25" cy="25" r="20" stroke="currentColor" strokeOpacity="0.15" strokeWidth="4" />
+      <path d="M25 5 A20 20 0 0 1 45 25" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
+    </svg>
+  </div>
+)
 
 const PageTransitionWrapper = ({ children }) => {
   const location = useLocation()
@@ -38,13 +50,18 @@ const AppInner = () => {
   return (
     <>
       <PageTransitionWrapper>
-        <Routes>
-          <Route path="/"          element={<HomePage />} />
-          <Route path="/movies"    element={<BrowsePage mediaType="movie" />} />
-          <Route path="/tv"        element={<BrowsePage mediaType="tv" />} />
-          <Route path="/movie/:id" element={<MediaDetailsPage mediaType="movie" />} />
-          <Route path="/tv/:id"    element={<MediaDetailsPage mediaType="tv" />} />
-        </Routes>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/"          element={<HomePage />} />
+            <Route path="/movies"    element={<BrowsePage mediaType="movie" />} />
+            <Route path="/tv"        element={<BrowsePage mediaType="tv" />} />
+            <Route path="/movie/:id" element={<MediaDetailsPage mediaType="movie" />} />
+            <Route path="/tv/:id"    element={<MediaDetailsPage mediaType="tv" />} />
+            <Route path="/login"     element={<LoginPage />} />
+            {/* Unknown paths fall back to the home feed. */}
+            <Route path="*"          element={<HomePage />} />
+          </Routes>
+        </Suspense>
       </PageTransitionWrapper>
       <ThemeToggle />
       <BackToTop />

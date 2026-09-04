@@ -1,51 +1,11 @@
 import { useState, useCallback } from 'react'
 import { getPosterUrl } from '../lib/tmdb'
+import { buildPages, sortSeasons } from '../lib/utils'
+import { ChevronIcon, PlayIcon } from './icons'
 
 export const EPISODES_PER_PAGE = 12
 
-const PlayIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <path d="M5 3l14 9-14 9V3z" />
-  </svg>
-)
-
-const ArrowIcon = ({ dir }) => (
-  <svg
-    width="18"
-    height="18"
-    viewBox="0 0 24 24"
-    fill="none"
-    aria-hidden="true"
-    style={{ transform: dir === 'left' ? 'rotate(180deg)' : undefined }}
-  >
-    <path d="M9 5l7 7-7 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-)
-
 const seasonLabel = (s) => (s.season_number === 0 ? 'Specials' : `Season ${s.season_number}`)
-
-const sortSeasons = (seasons = []) =>
-  [...seasons].sort((a, b) => {
-    const aKey = a.season_number === 0 ? Number.MAX_SAFE_INTEGER : a.season_number
-    const bKey = b.season_number === 0 ? Number.MAX_SAFE_INTEGER : b.season_number
-    return aKey - bKey
-  })
-
-// Build the pager items like the main Pagination (windowed page numbers + ellipses).
-const buildPages = (page, totalPages) => {
-  const MAX_VISIBLE = 5
-  if (totalPages <= MAX_VISIBLE) {
-    return Array.from({ length: totalPages }, (_, i) => i + 1)
-  }
-  const half = Math.floor(MAX_VISIBLE / 2)
-  let start = Math.max(1, page - half)
-  let end   = Math.min(totalPages, start + MAX_VISIBLE - 1)
-  if (end - start < MAX_VISIBLE - 1) start = Math.max(1, end - MAX_VISIBLE + 1)
-  const pages = Array.from({ length: end - start + 1 }, (_, i) => start + i)
-  if (start > 1) pages.unshift('…start')
-  if (end < totalPages) pages.push('…end')
-  return pages
-}
 
 /**
  * SeasonsSection — TV-only picker.
@@ -130,7 +90,7 @@ const SeasonsSection = ({
               disabled={!canStepPrev}
               aria-label="Previous season"
             >
-              <ArrowIcon dir="left" />
+              <ChevronIcon size={18} dir="left" />
             </button>
             <button
               type="button"
@@ -139,7 +99,7 @@ const SeasonsSection = ({
               disabled={!canStepNext}
               aria-label="Next season"
             >
-              <ArrowIcon dir="right" />
+              <ChevronIcon size={18} />
             </button>
           </div>
         )}
@@ -226,7 +186,7 @@ const SeasonsSection = ({
                       onClick={() => play(ep)}
                       aria-label={`Play ${ep.name || `Episode ${ep.episode_number}`}`}
                     >
-                      <PlayIcon />
+                      <PlayIcon size={14} />
                     </button>
                   </div>
                   <div className="episode-info">

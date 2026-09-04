@@ -1,30 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { fetchFeatured, getGenreMap, getBackdropUrl, mediaTitle, mediaYear } from '../lib/tmdb'
-
-const StarIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="#f5c518" aria-hidden="true">
-    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-  </svg>
-)
-
-const ChevronLeft = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-)
-
-const ChevronRight = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-)
-
-const PlayIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <path d="M5 3l14 9-14 9V3z" />
-  </svg>
-)
+import { ChevronIcon, PlayIcon, StarIcon } from './icons'
 
 const InfoIcon = () => (
   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -156,7 +133,9 @@ const FeaturedCarousel = () => {
         {slides.map((s, i) => (
           <img
             key={s.id}
-            src={getBackdropUrl(s.backdrop_path, 'original')}
+            src={getBackdropUrl(s.backdrop_path, 'w1280')}
+            srcSet={`${getBackdropUrl(s.backdrop_path, 'w780')} 780w, ${getBackdropUrl(s.backdrop_path, 'w1280')} 1280w, ${getBackdropUrl(s.backdrop_path, 'original')} 1920w`}
+            sizes="100vw"
             alt=""
             className={`carousel-backdrop-img ${i === current ? 'carousel-backdrop-img--active' : ''}`}
             loading={i === 0 ? 'eager' : 'lazy'}
@@ -176,7 +155,7 @@ const FeaturedCarousel = () => {
         <div className="carousel-inner">
           <div className="carousel-meta">
             <span className="carousel-rating" aria-label={`Rating: ${rating}`}>
-              <StarIcon />
+              <StarIcon size={14} />
               <span>{rating}</span>
             </span>
             {year && <span className="carousel-dot" aria-hidden="true">•</span>}
@@ -205,7 +184,7 @@ const FeaturedCarousel = () => {
               onClick={() => navigate(detailsPath)}
               aria-label={`Watch ${title} now`}
             >
-              <PlayIcon />
+              <PlayIcon size={18} />
               Watch Now
             </button>
             <button
@@ -222,10 +201,10 @@ const FeaturedCarousel = () => {
 
       {/* ── Navigation arrows ── */}
       <button className="carousel-arrow carousel-arrow--left" onClick={goPrev} aria-label="Previous">
-        <ChevronLeft />
+        <ChevronIcon size={24} dir="left" />
       </button>
       <button className="carousel-arrow carousel-arrow--right" onClick={goNext} aria-label="Next">
-        <ChevronRight />
+        <ChevronIcon size={24} />
       </button>
 
       {/* ── Dot indicators ── */}

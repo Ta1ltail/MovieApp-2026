@@ -1,15 +1,27 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 /**
  * Modal showing all keyboard shortcuts.
  * Open by pressing '?' globally (see hooks/useKeyboardShortcuts).
  */
 const KeyboardShortcutsModal = ({ isOpen, onClose }) => {
+  const closeRef = useRef(null)
+
   useEffect(() => {
     if (!isOpen) return
+    // Move focus into the dialog and lock background scrolling; restore both
+    // when it closes.
+    const previouslyFocused = document.activeElement
+    closeRef.current?.focus()
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
     const onKey = (e) => { if (e.key === 'Escape' || e.key === '?') onClose() }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+      previouslyFocused?.focus?.()
+    }
   }, [isOpen, onClose])
 
   if (!isOpen) return null
@@ -33,7 +45,7 @@ const KeyboardShortcutsModal = ({ isOpen, onClose }) => {
       <div className="kb-modal">
         <div className="kb-modal-header">
           <h2 className="kb-modal-title">Keyboard Shortcuts</h2>
-          <button className="kb-modal-close" onClick={onClose} aria-label="Close shortcuts modal">✕</button>
+          <button ref={closeRef} className="kb-modal-close" onClick={onClose} aria-label="Close shortcuts modal">✕</button>
         </div>
         <ul className="kb-shortcut-list">
           {shortcuts.map(({ key, desc }) => (

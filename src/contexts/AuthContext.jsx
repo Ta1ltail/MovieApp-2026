@@ -9,10 +9,10 @@ import { createContext, useContext, useState, useCallback } from 'react'
  * any backend, or store passwords — nothing sensitive ever touches storage.
  *
  * To implement real auth later: swap the bodies of `login`/`register`/`logout`
- * for your real API calls and keep the same shapes. The UI (Navbar + AuthModal)
- * does not need to change. Passwords are validated in the UI and deliberately
- * never stored, logged or transmitted by this prototype — a real backend would
- * receive them through these functions.
+ * for your real API calls and keep the same shapes. The UI (Navbar + the
+ * standalone /login page) does not need to change. Passwords are validated in
+ * the UI and deliberately never stored, logged or transmitted by this
+ * prototype — a real backend would receive them through these functions.
  */
 
 const STORAGE_KEY = 'bingetime.auth.user'

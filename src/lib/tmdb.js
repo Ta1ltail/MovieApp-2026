@@ -3,11 +3,6 @@ import { cachedFetch } from './cache'
 const BASE_URL   = 'https://api.themoviedb.org/3'
 export const IMAGE_BASE = 'https://image.tmdb.org/t/p'
 
-export const MEDIA_TYPES = {
-  movie: 'movie',
-  tv:    'tv',
-}
-
 // ── Per-type TMDB configuration ─────────────────────────────────────────────
 // Everything that differs between Movies and TV Series lives here so the
 // generic fetch helpers below stay type-agnostic.
@@ -42,7 +37,6 @@ const MEDIA_CONFIG = {
 
 export const mediaTitle = (item) => item?.title ?? item?.name ?? ''
 export const mediaYear  = (item) => String(item?.release_date || item?.first_air_date || '').slice(0, 4)
-export const mediaDate  = (item) => item?.release_date || item?.first_air_date || null
 
 // ── Search relevance ranking ────────────────────────────────────────────────
 // TMDB returns good search results, but mixing movies + TV or long tail pages

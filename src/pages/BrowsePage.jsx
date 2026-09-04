@@ -79,7 +79,7 @@ const BrowsePage = ({ mediaType }) => {
 
         <section className="movies-section" aria-label={`${label.noun === 'movie' ? 'Movie' : 'TV Series'} results`}>
           {isSearching && totalResults > 0 && (
-            <p className="search-results-count" style={{ marginBottom: '1rem' }}>
+            <p className="search-results-count">
               {totalResults.toLocaleString()} {label.noun}{totalResults !== 1 ? 's' : ''} found
             </p>
           )}
@@ -88,7 +88,11 @@ const BrowsePage = ({ mediaType }) => {
           ) : isLoading ? (
             <SkeletonGrid count={20} />
           ) : movies.length === 0 ? (
-            <EmptyState searchTerm={searchTerm} onClear={clearSearch} />
+            <EmptyState
+              searchTerm={searchTerm}
+              onClear={clearSearch}
+              heading={`No ${mediaType === 'tv' ? 'TV shows' : 'movies'} found`}
+            />
           ) : (
             <ul className="movies-grid" aria-label={`${label.noun} list`}>
               {movies.map(media => (

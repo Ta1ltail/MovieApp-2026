@@ -1,21 +1,8 @@
 import { Link } from 'react-router-dom'
 import { getPosterUrl, mediaTitle, mediaYear } from '../lib/tmdb'
+import { slugify } from '../lib/utils'
 import LazyImage from './LazyImage'
-
-const PlayIcon = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-    <path d="M5 3l14 9-14 9V3z" />
-  </svg>
-)
-
-const StarIcon = () => (
-  <svg width="11" height="11" viewBox="0 0 24 24" fill="#f5c518" aria-hidden="true">
-    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-  </svg>
-)
-
-const slugify = (str) =>
-  str?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') ?? ''
+import { PlayIcon, StarIcon } from './icons'
 
 /**
  * MediaCard — poster card for a Movie or a TV Series.
@@ -43,14 +30,14 @@ const MediaCard = ({ media, mediaType = media?.media_type }) => {
         <LazyImage src={posterUrl} alt={`${title} poster`} className="movie-card-poster" />
 
         <div className="movie-card-play-overlay" aria-hidden="true">
-          <div className="movie-card-play-btn"><PlayIcon /></div>
+          <div className="movie-card-play-btn"><PlayIcon size={18} /></div>
         </div>
       </div>
 
       <div className="movie-card-info">
         <h3 className="movie-card-title" title={title}>{title}</h3>
         <div className="movie-card-meta">
-          <StarIcon />
+          <StarIcon size={11} />
           <span className="movie-card-rating" style={{ color: ratingColor }}>{rating}</span>
           <span className="movie-card-dot" aria-hidden="true">·</span>
           <span className="movie-card-year">{year}</span>

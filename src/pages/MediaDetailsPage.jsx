@@ -5,6 +5,7 @@ import {
   getPosterUrl, getBackdropUrl,
   mediaTitle, mediaYear,
 } from '../lib/tmdb'
+import { sortSeasons } from '../lib/utils'
 import Navbar from '../components/Navbar'
 import VideoPlayer from '../components/VideoPlayer'
 import CastStrip from '../components/CastStrip'
@@ -12,12 +13,7 @@ import SeasonsSection from '../components/SeasonsSection'
 import SimilarGrid from '../components/SimilarGrid'
 import LazyImage from '../components/LazyImage'
 import Footer from '../components/Footer'
-
-const StarIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="#f5c518" aria-hidden="true">
-    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-  </svg>
-)
+import { StarIcon } from '../components/icons'
 
 const BackIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -36,14 +32,6 @@ const firstUsableSeason = (detail) => {
   }
   return 1
 }
-
-// Regular seasons ascending, Season 0 (Specials) always last.
-const sortSeasonsForNav = (seasons = []) =>
-  [...seasons].sort((a, b) => {
-    const aKey = a.season_number === 0 ? Number.MAX_SAFE_INTEGER : a.season_number
-    const bKey = b.season_number === 0 ? Number.MAX_SAFE_INTEGER : b.season_number
-    return aKey - bKey
-  })
 
 const MediaDetailsPage = ({ mediaType }) => {
   const { id } = useParams()
@@ -138,8 +126,8 @@ const MediaDetailsContent = ({ mediaType, id }) => {
     return (
       <div className="details-page">
         <Navbar />
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-          <svg width="48" height="48" viewBox="0 0 50 50" fill="none" style={{ animation: 'spin 0.9s linear infinite' }} aria-label="Loading">
+        <div className="details-loading" role="status" aria-label="Loading details">
+          <svg className="details-loading-spinner" viewBox="0 0 50 50" fill="none" aria-hidden="true">
             <circle cx="25" cy="25" r="20" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
             <path d="M25 5 A20 20 0 0 1 45 25" stroke="#AB8BFF" strokeWidth="4" strokeLinecap="round" />
           </svg>
@@ -152,7 +140,7 @@ const MediaDetailsContent = ({ mediaType, id }) => {
     return (
       <div className="details-page">
         <Navbar />
-        <div className="error-state" style={{ minHeight: '60vh' }}>
+        <div className="error-state details-error-state">
           <div className="error-state-icon">⚠️</div>
           <h2 className="error-state-title">Failed to load {mediaType === 'tv' ? 'series' : 'movie'}</h2>
           <p className="error-state-text">{error}</p>
@@ -176,7 +164,7 @@ const MediaDetailsContent = ({ mediaType, id }) => {
   // ── TV: Prev / Next episode helpers ───────────────────────────────────────
   const playSeason    = play?.season_number
   const playEpisodeNo = play?.episode_number
-  const navSeasons    = isTv ? sortSeasonsForNav(detail.seasons ?? []) : []
+  const navSeasons    = isTv ? sortSeasons(detail.seasons ?? []) : []
 
   // How many episodes a season has: prefer its loaded list (exact count),
   // then TMDB's metadata count.
@@ -285,7 +273,15 @@ const MediaDetailsContent = ({ mediaType, id }) => {
 
       {backdropUrl && (
         <div className="details-backdrop">
-          <img src={backdropUrl} alt="" className="details-backdrop-img" loading="eager" decoding="async" />
+          <img
+            src={getBackdropUrl(detail.backdrop_path, 'w1280')}
+            srcSet={`${getBackdropUrl(detail.backdrop_path, 'w780')} 780w, ${getBackdropUrl(detail.backdrop_path, 'w1280')} 1280w, ${getBackdropUrl(detail.backdrop_path, 'original')} 1920w`}
+            sizes="100vw"
+            alt=""
+            className="details-backdrop-img"
+            loading="eager"
+            decoding="async"
+          />
           <div className="details-backdrop-overlay" aria-hidden="true" />
           <button
             className="details-back-btn details-back-btn--absolute"
@@ -309,8 +305,8 @@ const MediaDetailsContent = ({ mediaType, id }) => {
 
             <div className="details-meta">
               <span className="details-rating">
-                <StarIcon />
-                <span style={{ marginLeft: 4 }}>{rating}</span>
+                <StarIcon size={16} />
+                <span>{rating}</span>
               </span>
               <span className="details-dot" aria-hidden="true">·</span>
               <span>{year}</span>

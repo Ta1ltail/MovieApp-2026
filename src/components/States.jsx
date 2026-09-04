@@ -1,11 +1,11 @@
-export const EmptyState = ({ searchTerm, onClear }) => (
+export const EmptyState = ({ searchTerm, onClear, heading = 'No results found' }) => (
   <div className="empty-state" role="status">
     <div className="empty-state-icon" aria-hidden="true">🎬</div>
-    <h3 className="empty-state-title">No movies found</h3>
+    <h3 className="empty-state-title">{heading}</h3>
     <p className="empty-state-text">
       {searchTerm
         ? `No results for "${searchTerm}". Try a different keyword.`
-        : 'No movies match your current filters. Try adjusting or resetting them.'}
+        : 'Nothing matches your current filters right now. Try adjusting or clearing them.'}
     </p>
     <button className="empty-state-btn" onClick={onClear}>
       {searchTerm ? 'Clear search' : 'Reset filters'}

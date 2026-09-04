@@ -2,9 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchTMDB, getPosterUrl, mediaTitle, mediaYear, rankSearchResults } from '../lib/tmdb'
 import { cachedFetch } from '../lib/cache'
-
-const slugify = (str) =>
-  str?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') ?? ''
+import { slugify } from '../lib/utils'
 
 // Searches both Movies and TV Series, ranks by relevance + popularity, and
 // returns the top mixed hits.

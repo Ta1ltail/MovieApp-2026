@@ -1,52 +1,37 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 /**
- * AuthModal — Login / Register UI.
+ * LoginPage — standalone Login / Register route (/login).
  *
- * Prototype only (see AuthContext): submission is validated client-side and
- * then handled by the fake auth context. The modal layout/tabs are the
- * intended surface for a real backend later — swap AuthContext, keep this.
+ * Prototype auth (see AuthContext): submission is validated client-side and
+ * then handled by the fake auth context, exactly like the previous modal —
+ * only the surface changed from an overlay to a dedicated page so signing in
+ * is a first-class navigation target (and mobile-friendly). A signed-in user
+ * is redirected back to where they came from (or home).
  */
-const AuthModal = ({ isOpen, onClose }) => {
-  const { login, register } = useAuth()
-  const [mode, setMode]     = useState('login') // 'login' | 'register'
-  const [name, setName]     = useState('')
-  const [email, setEmail]   = useState('')
+const LoginPage = () => {
+  const { user, login, register } = useAuth()
+  const location = useLocation()
+  const from = location.state?.from && location.state.from !== '/login'
+    ? location.state.from
+    : '/'
+
+  const [mode, setMode]       = useState('login') // 'login' | 'register'
+  const [name, setName]       = useState('')
+  const [email, setEmail]     = useState('')
   const [password, setPassword] = useState('')
-  const [confirm, setConfirm]   = useState('')
-  const [error, setError]   = useState('')
-  const [busy, setBusy]     = useState(false)
+  const [confirm, setConfirm] = useState('')
+  const [error, setError]     = useState('')
+  const [busy, setBusy]       = useState(false)
   const emailRef = useRef(null)
-  const overlayRef = useRef(null)
 
-  // Reset everything when the modal is closed (guarded render-phase reset —
-  // no sync setState inside an effect).
-  const [prevOpen, setPrevOpen] = useState(isOpen)
-  if (isOpen !== prevOpen) {
-    setPrevOpen(isOpen)
-    if (!isOpen) {
-      setMode('login')
-      setName('')
-      setEmail('')
-      setPassword('')
-      setConfirm('')
-      setError('')
-      setBusy(false)
-    }
-  }
-
-  // Focus the first field + close on Escape while open.
+  // Focus the first field on arrival.
   useEffect(() => {
-    if (!isOpen) return
     const t = setTimeout(() => emailRef.current?.focus(), 60)
-    const onKey = (e) => { if (e.key === 'Escape') onClose() }
-    document.addEventListener('keydown', onKey)
-    return () => {
-      clearTimeout(t)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [isOpen, onClose])
+    return () => clearTimeout(t)
+  }, [])
 
   const switchMode = useCallback((m) => { setMode(m); setError('') }, [])
 
@@ -68,9 +53,10 @@ const AuthModal = ({ isOpen, onClose }) => {
     }
     setBusy(true)
     try {
+      // On success `user` updates and the <Navigate> below sends the visitor
+      // back where they came from — no manual navigation needed.
       if (mode === 'login') await login(em, password)
       else await register(name, em, password)
-      onClose()
     } catch (err) {
       setError(err?.message ?? 'Something went wrong. Please try again.')
     } finally {
@@ -78,22 +64,23 @@ const AuthModal = ({ isOpen, onClose }) => {
     }
   }
 
-  if (!isOpen) return null
+  // Already signed in (or just signed in) → leave the login page.
+  if (user) return <Navigate to={from} replace />
 
   return (
-    <div
-      className="auth-modal-overlay"
-      ref={overlayRef}
-      onMouseDown={(e) => { if (e.target === overlayRef.current) onClose() }}
-    >
-      <div className="auth-modal" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+    <div className="auth-page">
+      <Link to="/" className="auth-brand" aria-label="BingeTime — home">
+        <span className="navbar-logo-icon" aria-hidden="true">🎬</span>
+        <span className="navbar-logo-text">
+          Binge<span className="text-gradient">Time</span>
+        </span>
+      </Link>
+
+      <div className="auth-modal" role="region" aria-label="Log in or create an account">
         <div className="auth-modal-header">
-          <h2 id="auth-modal-title" className="auth-modal-title">
+          <h1 id="auth-modal-title" className="auth-modal-title">
             {mode === 'login' ? 'Welcome back' : 'Create your account'}
-          </h2>
-          <button type="button" className="kb-modal-close" onClick={onClose} aria-label="Close dialog">
-            ✕
-          </button>
+          </h1>
         </div>
 
         {/* Mode tabs */}
@@ -183,8 +170,10 @@ const AuthModal = ({ isOpen, onClose }) => {
           credentials are never stored or verified, and nothing is sent to a server.
         </p>
       </div>
+
+      <Link to="/" className="auth-back-home">← Back to browsing</Link>
     </div>
   )
 }
 
-export default AuthModal
+export default LoginPage

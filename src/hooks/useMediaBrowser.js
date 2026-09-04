@@ -1,15 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { fetchDiscover, fetchSearch, fetchGenres, CATEGORIES } from '../lib/tmdb'
-
-export const useDebounce = (value, delay = 350) => {
-  const [debounced, setDebounced] = useState(value)
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), delay)
-    return () => clearTimeout(t)
-  }, [value, delay])
-  return debounced
-}
+import { useDebounce } from './useDebounce'
 
 export const useGenres = (mediaType) => {
   const [genres, setGenres] = useState([])

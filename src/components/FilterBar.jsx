@@ -164,12 +164,12 @@ const FilterBar = ({
 
       {/* ── Collapsible filter panel ── */}
       {openSection && (
-        <div className="filter-panel filter-panel--open" style={{ maxHeight: 'none', pointerEvents: 'auto', opacity: 1 }}>
+        <div className="filter-panel">
           <div className="filter-panel-inner">
 
             {openSection === 'genre' && (
               <div>
-                <p className="filter-input-label" style={{ marginBottom: '0.75rem' }}>Select Genres (multi)</p>
+                <p className="filter-input-label">Select Genres (multi)</p>
                 <div className="filter-toggle-grid">
                   {genres.map(g => {
                     const active = draftFilters.genreIds.includes(String(g.id))
@@ -189,7 +189,7 @@ const FilterBar = ({
 
             {openSection === 'year' && (
               <div>
-                <p className="filter-input-label" style={{ marginBottom: '0.75rem' }}>Select Year / Decade</p>
+                <p className="filter-input-label">Select Year / Decade</p>
                 <div className="filter-toggle-grid">
                   <button
                     className={`filter-toggle-btn${!draftFilters.year ? ' filter-toggle-btn--active' : ''}`}
@@ -210,7 +210,7 @@ const FilterBar = ({
 
             {openSection === 'rating' && (
               <div>
-                <p className="filter-input-label" style={{ marginBottom: '0.75rem' }}>Minimum Rating</p>
+                <p className="filter-input-label">Minimum Rating</p>
                 <div className="filter-toggle-grid">
                   <button
                     className={`filter-toggle-btn${!draftFilters.minRating ? ' filter-toggle-btn--active' : ''}`}

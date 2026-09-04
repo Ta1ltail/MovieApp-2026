@@ -1,16 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchSimilar, getPosterUrl, mediaTitle, mediaYear } from '../lib/tmdb'
+import { slugify } from '../lib/utils'
 import LazyImage from './LazyImage'
-
-const StarIcon = () => (
-  <svg width="10" height="10" viewBox="0 0 24 24" fill="#f5c518" aria-hidden="true">
-    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-  </svg>
-)
-
-const slugify = (str) =>
-  str?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') ?? ''
+import { StarIcon } from './icons'
 
 const SimilarGrid = ({ mediaType, id, heading = 'You Might Also Like' }) => {
   const [movies, setMovies] = useState([])
@@ -71,7 +64,7 @@ const SimilarGrid = ({ mediaType, id, heading = 'You Might Also Like' }) => {
                 <div className="similar-info">
                   <p className="similar-title" title={title}>{title}</p>
                   <div className="similar-meta">
-                    <StarIcon />
+                    <StarIcon size={10} />
                     <span className="similar-rating">{rating}</span>
                     <span className="similar-dot">·</span>
                     <span className="similar-year">{year}</span>
