@@ -164,11 +164,6 @@ const LoginPage = () => {
             {busy ? 'Please wait…' : mode === 'login' ? 'Log in' : 'Create account'}
           </button>
         </form>
-
-        <p className="auth-modal-note">
-          Prototype authentication — testing build only. No real account is created,
-          credentials are never stored or verified, and nothing is sent to a server.
-        </p>
       </div>
 
       <Link to="/" className="auth-back-home">← Back to browsing</Link>

@@ -13,7 +13,7 @@ const Footer = () => (
 
       <span className="site-footer-sep" aria-hidden="true">·</span>
 
-      <span className="site-footer-note">Personal project — not for commercial use</span>
+      <span className="site-footer-note">Personal Project — not for commercial use</span>
 
       <span className="site-footer-sep" aria-hidden="true">·</span>
 
