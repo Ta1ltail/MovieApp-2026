@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { fetchMovies, searchMovies, fetchGenres } from '../lib/tmdb'
+import { fetchDiscover, fetchSearch, fetchGenres, CATEGORIES } from '../lib/tmdb'
 
-const useDebounce = (value, delay = 350) => {
+export const useDebounce = (value, delay = 350) => {
   const [debounced, setDebounced] = useState(value)
   useEffect(() => {
     const t = setTimeout(() => setDebounced(value), delay)
@@ -11,15 +11,25 @@ const useDebounce = (value, delay = 350) => {
   return debounced
 }
 
-export const useGenres = () => {
+export const useGenres = (mediaType) => {
   const [genres, setGenres] = useState([])
   useEffect(() => {
-    fetchGenres().then(setGenres).catch(console.error)
-  }, [])
+    let cancelled = false
+    fetchGenres(mediaType).then(g => { if (!cancelled) setGenres(g) }).catch(console.error)
+    return () => { cancelled = true }
+  }, [mediaType])
   return genres
 }
 
-export const useMovies = () => {
+/**
+ * useMediaBrowser — the URL-as-state browsing machine for a single media type.
+ *
+ * URL state semantics shared by the Movies and TV Series pages:
+ *   ?q= ?cat= ?page= ?genre= ?year= ?rating=
+ * The movie categories/floors/discover params are unchanged; 'tv' uses the
+ * TV endpoint equivalents.
+ */
+export const useMediaBrowser = (mediaType) => {
   const [searchParams, setSearchParams] = useSearchParams()
 
   const searchTerm = searchParams.get('q') ?? ''
@@ -63,6 +73,50 @@ export const useMovies = () => {
   const [error,        setError]        = useState('')
 
   const debouncedSearch = useDebounce(searchTerm, 350)
+
+  // Manual "retry" trigger — bumping it refetches with the current params.
+  const [reloadCount, setReloadCount] = useState(0)
+  const reload = useCallback(() => setReloadCount(c => c + 1), [])
+
+  // Everything that should trigger a fetch, serialized.
+  const requestKey = useMemo(
+    () => `${mediaType}::${debouncedSearch}::${page}::${category}::${JSON.stringify(appliedFilters)}::${reloadCount}`,
+    [mediaType, debouncedSearch, page, category, appliedFilters, reloadCount]
+  )
+
+  // When the request inputs change, flip back to the loading state right away.
+  // Guarded render-phase update (avoids a synchronous setState inside an effect).
+  const [prevRequestKey, setPrevRequestKey] = useState(requestKey)
+  if (requestKey !== prevRequestKey) {
+    setPrevRequestKey(requestKey)
+    setIsLoading(true)
+    setError('')
+  }
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const load = async () => {
+      try {
+        let data
+        if (debouncedSearch.trim()) {
+          data = await fetchSearch(mediaType, debouncedSearch.trim(), page)
+        } else {
+          data = await fetchDiscover(mediaType, category, appliedFilters, page)
+        }
+        if (controller.signal.aborted) return
+        setMovies(data.results ?? [])
+        setTotalPages(Math.min(data.total_pages ?? 1, 500))
+        setTotalResults(data.total_results ?? 0)
+      } catch (err) {
+        if (controller.signal.aborted) return
+        setError(err?.message ?? 'Failed to fetch.')
+      } finally {
+        if (!controller.signal.aborted) setIsLoading(false)
+      }
+    }
+    load()
+    return () => controller.abort()
+  }, [mediaType, debouncedSearch, page, category, appliedFilters, reloadCount])
 
   // ── Setters ───────────────────────────────────────────────────────────────
 
@@ -187,57 +241,22 @@ export const useMovies = () => {
     setDraftFilters({ genreIds: [], year: '', minRating: '' })
   }, [setSearchParams])
 
-  const activeFilterCount = useMemo(() =>
-    (appliedFilters.genreIds.length > 0 ? 1 : 0) +
-    (appliedFilters.year      ? 1 : 0) +
-    (appliedFilters.minRating ? 1 : 0)
-  , [appliedFilters])
-
   const hasDraftChanges = useMemo(() =>
     JSON.stringify(draftFilters.genreIds) !== JSON.stringify(appliedFilters.genreIds) ||
     draftFilters.year      !== appliedFilters.year      ||
     draftFilters.minRating !== appliedFilters.minRating
   , [draftFilters, appliedFilters])
 
-  const fetchData = useCallback(async (signal) => {
-    setIsLoading(true)
-    setError('')
-    try {
-      let data
-      if (debouncedSearch.trim()) {
-        data = await searchMovies(debouncedSearch.trim(), page)
-      } else {
-        data = await fetchMovies(category, appliedFilters, page)
-      }
-      if (signal?.aborted) return
-      setMovies(data.results ?? [])
-      setTotalPages(Math.min(data.total_pages ?? 1, 500))
-      setTotalResults(data.total_results ?? 0)
-    } catch (err) {
-      if (signal?.aborted) return
-      setError(err?.message ?? 'Failed to fetch movies.')
-    } finally {
-      if (!signal?.aborted) setIsLoading(false)
-    }
-  }, [debouncedSearch, page, category, appliedFilters])
-
-  const reloadRef = useRef(0)
-  const reload    = useCallback(() => { reloadRef.current += 1 }, [])
-
-  useEffect(() => {
-    const controller = new AbortController()
-    fetchData(controller.signal)
-    return () => controller.abort()
-  }, [fetchData, reloadRef.current]) // eslint-disable-line react-hooks/exhaustive-deps
-
   return {
+    mediaType,
+    categories: CATEGORIES[mediaType],
     searchTerm, setSearchTerm, clearSearch,
     category, setCategory,
     page, setPage,
     draftFilters, updateDraftFilter, toggleDraftGenre,
     appliedFilters, removeAppliedFilter, removeAppliedGenre,
     applyFilters, resetFilters,
-    activeFilterCount, hasDraftChanges,
+    hasDraftChanges,
     movies, totalPages, totalResults,
     isLoading, error, reload,
   }

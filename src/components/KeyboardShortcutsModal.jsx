@@ -1,10 +1,10 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect } from 'react'
 
 /**
  * Modal showing all keyboard shortcuts.
- * Open by pressing '?' globally.
+ * Open by pressing '?' globally (see hooks/useKeyboardShortcuts).
  */
-export const KeyboardShortcutsModal = ({ isOpen, onClose }) => {
+const KeyboardShortcutsModal = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (!isOpen) return
     const onKey = (e) => { if (e.key === 'Escape' || e.key === '?') onClose() }
@@ -49,40 +49,4 @@ export const KeyboardShortcutsModal = ({ isOpen, onClose }) => {
   )
 }
 
-/**
- * useKeyboardShortcuts — attach global shortcuts.
- * Returns { shortcutsOpen, setShortcutsOpen }
- */
-export const useKeyboardShortcuts = ({ onSearchFocus, onCarouselPrev, onCarouselNext } = {}) => {
-  const [shortcutsOpen, setShortcutsOpen] = useState(false)
-
-  const closeShortcuts = useCallback(() => setShortcutsOpen(false), [])
-
-  useEffect(() => {
-    const onKey = (e) => {
-      const tag = document.activeElement?.tagName
-      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable
-
-      if (isInput) return
-
-      switch (e.key) {
-        case '?':
-          e.preventDefault()
-          setShortcutsOpen(v => !v)
-          break
-        case 'ArrowLeft':
-          onCarouselPrev?.()
-          break
-        case 'ArrowRight':
-          onCarouselNext?.()
-          break
-        default:
-          break
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onSearchFocus, onCarouselPrev, onCarouselNext])
-
-  return { shortcutsOpen, setShortcutsOpen, closeShortcuts }
-}
+export default KeyboardShortcutsModal

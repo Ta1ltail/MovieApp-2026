@@ -1,45 +1,71 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 
+// Each server builds an embed URL for a movie or a TV episode.
+// Movie URLs are unchanged from previous versions.
+//
+// `quality` is the stream quality these embed services are documented to
+// typically serve ('HD' / 'SD'). It's a provider-level default — an embed
+// can't be probed for its actual resolution — so servers with no stable
+// known quality (e.g. 2Embed, which mixes sources) leave it out and the
+// badge simply doesn't appear instead of guessing.
 const SERVERS = [
   {
-    id:    'vidsrc-ru',
-    name:  'VidSrc',
-    badge: 'MULTI',
-    getUrl: (id, subtitleUrl, dsLang = 'en') => {
-      let url = `https://vidsrc-embed.ru/embed/movie?tmdb=${id}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}&touch=0&controls=true`
+    id:      'vidsrc-ru',
+    name:    'VidSrc',
+    badge:   'MULTI',
+    quality: 'HD',
+    getUrl: ({ mediaType, tmdbId, season, episode, subtitleUrl, dsLang = 'en' }) => {
+      if (mediaType === 'tv') {
+        let url = `https://vidsrc-embed.ru/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
+        if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
+        return url
+      }
+      let url = `https://vidsrc-embed.ru/embed/movie?tmdb=${tmdbId}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
       if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
       return url
     },
   },
   {
-    id:    'vaplayer-ru',
-    name:  'VaPlayer',
-    badge: 'HD',
-    getUrl: (id, subtitleUrl, subtitleLabel = 'English') => {
-      let url = `https://vaplayer.ru/embed/movie?tmdb=${id}&autoplay=false`
+    id:      'vaplayer-ru',
+    name:    'VaPlayer',
+    badge:   'HD',
+    quality: 'HD',
+    getUrl: ({ mediaType, tmdbId, season, episode, subtitleUrl, subtitleLabel = 'English' }) => {
+      if (mediaType === 'tv') {
+        let url = `https://vaplayer.ru/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&autoplay=false`
+        if (subtitleUrl) url += `&sub_file=${subtitleUrl}&sub_label=${subtitleLabel}`
+        return url
+      }
+      let url = `https://vaplayer.ru/embed/movie?tmdb=${tmdbId}&autoplay=false`
       if (subtitleUrl) url += `&sub_file=${subtitleUrl}&sub_label=${subtitleLabel}`
       return url
     },
   },
   {
-    id:    'vidlink.pro',
-    name:  'VidLink',
-    badge: 'SUB',
-    getUrl: (id) =>
-      `https://vidlink.pro/movie/${id}?primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&title=true&poster=true&autoplay=false&nextbutton=false&tmdb=1&defaultSubtitle=en`
+    id:      'vidlink.pro',
+    name:    'VidLink',
+    badge:   'SUB',
+    quality: 'HD',
+    getUrl: ({ mediaType, tmdbId, season, episode }) => {
+      const base = 'primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&tmdb=1&defaultSubtitle=en'
+      if (mediaType === 'tv') return `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}?${base}`
+      return `https://vidlink.pro/movie/${tmdbId}?${base}`
+    },
   },
   {
     id:    '2embed.cc',
     name:  '2Embed',
     badge: '',
-    getUrl: (id) => `https://www.2embed.cc/embed/${id}`,
+    getUrl: ({ mediaType, tmdbId, season, episode }) => {
+      if (mediaType === 'tv') return `https://www.2embed.cc/embedtv/${tmdbId}&s=${season}&e=${episode}`
+      return `https://www.2embed.cc/embed/${tmdbId}`
+    },
   },
 ]
 
 // ── Popup/redirect blocker ─────────────────────────────────────────────────────
 
-// ── Popup/redirect blocker ─────────────────────────────────────────────────────
-const usePopupBlocker = () => {
+const usePopupBlocker = (wrapRef) => {
   useEffect(() => {
     const _open    = window.open
     const _push    = history.pushState.bind(history)
@@ -47,44 +73,46 @@ const usePopupBlocker = () => {
 
     window.open = () => null
 
-    try { window.location.assign = window.location.replace = () => {} } catch {}
-    
+    try { window.location.assign = window.location.replace = () => {} } catch { /* unsupported in some browsers */ }
+    try { Object.defineProperty(window, 'top', { get: () => window, configurable: true }) } catch { /* already defined / non-configurable */ }
+
     const isValidPath = (url) => url && String(url).startsWith('/')
-    history.pushState    = (...a) => { if (isValidPath(a[2])) _push(...a) }
-    history.replaceState = (...a) => { if (isValidPath(a[2])) _replace(...a) }
+    history.pushState    = (...a) => isValidPath(a[2]) && _push(...a)
+    history.replaceState = (...a) => isValidPath(a[2]) && _replace(...a)
 
     const onUnload = (e) => { e.preventDefault(); e.returnValue = '' }
     window.addEventListener('beforeunload', onUnload)
 
+    let lastClick = 0
+    const el = wrapRef.current
+    const onClickCapture = (e) => {
+      const now = Date.now()
+      if (now - lastClick > 600) { lastClick = now; e.stopPropagation() }
+    }
+    el?.addEventListener('click', onClickCapture, true)
+
     const observer = new MutationObserver((mutations) => {
-      for (const { addedNodes, target } of mutations) {
-        // only act on direct body children, not inside iframes
-        if (target !== document.body) continue
-        for (const node of addedNodes) {
-          if (
-            node.nodeType !== 1 ||
-            node.classList?.contains('vp-iframe')
-          ) continue
-          if (
-            node.tagName === 'SCRIPT' ||
-            node.tagName === 'IFRAME'
-          ) node.remove()
-        }
-      }
+      for (const { addedNodes } of mutations)
+        for (const node of addedNodes)
+          if (node.tagName === 'SCRIPT' || (node.tagName === 'IFRAME' && !node.classList.contains('vp-iframe')))
+            node.remove()
     })
-    observer.observe(document.body, { childList: true })
+    observer.observe(document.body, { childList: true, subtree: true })
 
     return () => {
       window.open = _open
       history.pushState    = _push
       history.replaceState = _replace
       window.removeEventListener('beforeunload', onUnload)
+      el?.removeEventListener('click', onClickCapture, true)
       observer.disconnect()
     }
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 // ── Shortcuts bar — rendered inside the player container ──────────────────────
+
+const VP_LOAD_TIMEOUT = 15000
 
 const VP_SHORTCUTS = [
   { key: 'Space', desc: 'Play/Pause' },
@@ -110,6 +138,9 @@ const ShortcutsBar = () => (
 
 const VideoPlayer = ({
   tmdbId,
+  mediaType = 'movie',   // 'movie' | 'tv'
+  season = 1,
+  episode = 1,
   title,
   subtitleUrl   = null,
   subtitleLabel = 'English',
@@ -120,9 +151,33 @@ const VideoPlayer = ({
   const [hasError,     setHasError]     = useState(false)
   const wrapRef = useRef(null)
 
-  usePopupBlocker()
+  usePopupBlocker(wrapRef)
 
-  useEffect(() => { setIsLoading(true); setHasError(false) }, [activeServer, tmdbId])
+  // Reset the loading/error state when the server, movie or episode changes —
+  // a guarded render-phase update instead of a sync setState inside an effect.
+  const playerKey = `${mediaType}:${activeServer}:${tmdbId}:${season}:${episode}`
+  const [prevPlayerKey, setPrevPlayerKey] = useState(playerKey)
+  if (playerKey !== prevPlayerKey) {
+    setPrevPlayerKey(playerKey)
+    setIsLoading(true)
+    setHasError(false)
+  }
+
+  // Mirror isLoading in a ref so the timeout effect always reads the live value.
+  const loadingRef = useRef(isLoading)
+  useEffect(() => { loadingRef.current = isLoading }, [isLoading])
+
+  // Dead servers: if nothing loads within the grace period, surface the error
+  // state so the user is offered a server switch instead of an endless spinner.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (loadingRef.current) {
+        setIsLoading(false)
+        setHasError(true)
+      }
+    }, VP_LOAD_TIMEOUT)
+    return () => clearTimeout(t)
+  }, [playerKey])
 
   const handleServerChange = useCallback((i) => { if (i !== activeServer) setActiveServer(i) }, [activeServer])
   const tryNextServer      = useCallback(() => setActiveServer((s) => (s + 1) % SERVERS.length), [])
@@ -144,10 +199,11 @@ const VideoPlayer = ({
   }, [])
 
   const current = SERVERS[activeServer]
+  const playbackLabel = mediaType === 'tv' ? `S${season}E${episode}` : null
+  const playerTitle   = playbackLabel ? `${title} — ${playbackLabel}` : title
 
   return (
     <div className="vp-container">
-
       {/* ── Server selector ── */}
       <div className="vp-server-bar">
         <span className="vp-server-label">Stream via:</span>
@@ -169,6 +225,15 @@ const VideoPlayer = ({
             </button>
           ))}
         </div>
+        {/* Quality badge — shown only when this server has a known quality */}
+        {current.quality && (
+          <span
+            className="vp-quality-badge"
+            title={`${current.name} typically streams in ${current.quality}`}
+          >
+            {current.quality}
+          </span>
+        )}
       </div>
 
       {/* ── Player ── */}
@@ -198,32 +263,24 @@ const VideoPlayer = ({
         )}
 
         <iframe
-          key={`${activeServer}-${tmdbId}`}
-          src={current.getUrl(tmdbId, subtitleUrl, subtitleLabel || defaultLang)}
-          title={`${title} — ${current.name}`}
+          key={playerKey}
+          src={current.getUrl({ mediaType, tmdbId, season, episode, subtitleUrl, subtitleLabel, dsLang: defaultLang })}
+          title={`${playerTitle} — ${current.name}`}
           className="vp-iframe"
           onLoad={() => setIsLoading(false)}
           onError={() => { setIsLoading(false); setHasError(true) }}
-
-          // ✅ expanded permissions — pointer-lock lets JW Player properly
-          //    capture mouse for fullscreen; display-capture, gyroscope help
-          //    with responsive player detection
-          allow="autoplay; fullscreen *; picture-in-picture *; encrypted-media; pointer-lock *; display-capture *; gyroscope *; accelerometer *"
+          allow="autoplay; fullscreen *; picture-in-picture *; encrypted-media"
           allowFullScreen
-
-          // ✅ CHANGED: "origin" strips the path and can trigger restricted
-          //    mode on some embed providers. "no-referrer-when-downgrade"
-          //    sends the full URL which VidSrc expects for whitelisting
-          referrerPolicy="no-referrer-when-downgrade"
-
-          // ✅ REMOVED: scrolling="no" — deprecated attribute, can interfere
-          //    with internal player scroll handling on some browsers
+          referrerPolicy="origin"
+          scrolling="no"
         />
       </div>
 
       {/* ── Hint ── */}
       <p className="vp-hint">
-        English subtitles are enabled by default where supported. If a server doesn't load, switch to another.
+        {mediaType === 'tv'
+          ? 'Select an episode to change what plays. If a server doesn\'t load, switch to another.'
+          : 'English subtitles are enabled by default where supported. If a server doesn\'t load, switch to another.'}
       </p>
 
       {/* ── Shortcuts — integrated inside the player container ── */}

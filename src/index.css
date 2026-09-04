@@ -1,5 +1,4 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap");
 @import "tailwindcss";
 
 /* ─── Theme tokens ─────────────────────────────────────────────────────────── */
@@ -58,7 +57,6 @@
   --color-dark-100:   #0f0d23;
   --font-dm-sans:     DM Sans, sans-serif;
   --breakpoint-xs:    480px;
-  --background-image-hero-pattern: url("/hero-bg.svg");
 }
 
 /* ─── Base ─────────────────────────────────────────────────────────────────── */
@@ -74,7 +72,6 @@
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    transition: background 0.3s ease, color 0.3s ease;
   }
 
   h2 { @apply text-2xl font-bold sm:text-3xl; color: var(--text-white); }
@@ -86,17 +83,16 @@
   @apply bg-linear-to-r from-[#D6C7FF] to-[#AB8BFF] bg-clip-text text-transparent;
 }
 
-@utility fancy-text {
-  -webkit-text-stroke: 5px rgba(206, 206, 251, 0.5);
-  font-size: 190px;
-  font-family: "Bebas Neue", sans-serif;
+/* ─── Instant theme switching ──────────────────────────────────────────────── */
+/* Added by ThemeContext for the single frame where data-theme is swapped, so
+   the palette change never cross-fades — it snaps instantly. */
+.no-transitions,
+.no-transitions *,
+.no-transitions *::before,
+.no-transitions *::after {
+  transition: none !important;
 }
 
-@utility hide-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-  &::-webkit-scrollbar { display: none; }
-}
 
 /* ─── Lazy image blur-up ────────────────────────────────────────────────────── */
 .lazy-img {
@@ -133,7 +129,7 @@
   align-items: center;
   justify-content: center;
   box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.3s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
     transform: scale(1.1);
@@ -181,14 +177,6 @@
   }
 }
 
-/* ─── Skip link ─────────────────────────────────────────────────────────────── */
-.skip-link {
-  position: absolute; top: -100px; left: 1rem;
-  background: var(--color-accent); color: #030014;
-  padding: 0.5rem 1rem; border-radius: 4px;
-  font-weight: 700; z-index: 9999; transition: top 0.2s;
-  &:focus { top: 1rem; }
-}
 
 /* ─── Navbar ─────────────────────────────────────────────────────────────────
    Sticky with high z-index so the search dropdown always renders above the
@@ -202,7 +190,6 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-subtle);
-  transition: background 0.3s ease;
 }
 
 .navbar-inner {
@@ -210,6 +197,33 @@
   padding: 0 1.5rem; height: 64px;
   display: flex; align-items: center;
   justify-content: space-between; gap: 1rem;
+}
+
+/* Brand + page links sit together on the left, search on the right */
+.navbar-left {
+  display: flex; align-items: center; gap: 1.5rem; min-width: 0;
+}
+.navbar-left .navbar-brand { flex-shrink: 0; }
+.navbar-links {
+  display: flex; align-items: center; gap: 1.1rem;
+  white-space: nowrap; overflow-x: auto;
+  scrollbar-width: none; -ms-overflow-style: none;
+  &::-webkit-scrollbar { display: none; }
+}
+/* Subtle divider between the nav links and the search area */
+.navbar-sep {
+  width: 1px; height: 22px; flex-shrink: 0;
+  background: var(--border-subtle); opacity: 0.8;
+}
+@media (max-width: 640px) {
+  .navbar-left { gap: 1rem; }
+  .navbar-links { gap: 0.85rem; }
+  .navbar-sep { display: none; }
+}
+@media (max-width: 480px) {
+  .navbar-left { gap: 0.75rem; }
+  .navbar-links { gap: 0.7rem; }
+  .navbar-logo-text { font-size: 1.05rem; }
 }
 
 .navbar-brand {
@@ -222,7 +236,7 @@
   color: var(--text-white); letter-spacing: -0.025em;
 }
 
-.navbar-right { display: flex; align-items: center; gap: 0.75rem; }
+.navbar-right { display: flex; align-items: center; gap: 0.75rem; margin-left: auto; }
 
 /* Search wrap — relative so the absolute dropdown is scoped here */
 .navbar-search-wrap {
@@ -271,11 +285,14 @@
   font-family: inherit; flex-shrink: 0;
   &:hover { background: rgba(248,113,113,0.2); color: #f87171; }
 }
-.navbar-links { display: flex; align-items: center; gap: 1rem; }
 .navbar-link {
   color: var(--text-secondary); text-decoration: none;
   font-size: 0.9rem; font-weight: 500; transition: color 0.2s; white-space: nowrap;
   &:hover { color: #D6C7FF; }
+}
+.navbar-link--active {
+  color: var(--color-accent); font-weight: 700;
+  &:hover { color: var(--color-accent); }
 }
 
 /* ─── Navbar search kbd hint ─────────────────────────────────────────────── */
@@ -359,6 +376,12 @@
   color: var(--text-white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .search-suggestion-year { font-size: 0.75rem; color: var(--text-muted); }
+.search-suggestion-type {
+  flex-shrink: 0; font-size: 0.62rem; font-weight: 800;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: var(--color-accent); border: 1px solid var(--border-accent);
+  border-radius: 5px; padding: 1px 5px;
+}
 .search-suggestion-rating {
   font-size: 0.72rem; font-weight: 700; color: #f5c518;
   white-space: nowrap; flex-shrink: 0;
@@ -410,6 +433,12 @@
 .carousel-rating { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; font-size: 0.9rem; color: #fff; }
 .carousel-year  { color: #a8b5db; font-size: 0.9rem; }
 .carousel-dot   { color: rgba(255,255,255,0.3); }
+.carousel-type-label {
+  color: #D6C7FF; font-size: 0.68rem; font-weight: 800;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  background: rgba(171,139,255,0.18); border: 1px solid rgba(171,139,255,0.35);
+  padding: 2px 8px; border-radius: 999px;
+}
 .carousel-title {
   font-size: clamp(1.8rem,5vw,3.5rem); font-weight: 900; color: #fff;
   line-height: 1.1; margin: 0 0 0.9rem; letter-spacing: -0.03em;
@@ -549,13 +578,16 @@
   &:hover { color: #D6C7FF; }
 }
 
-/* ─── Homepage body ──────────────────────────────────────────────────────── */
-.homepage { min-height: 100vh; background: var(--bg-primary); }
+/* ─── Homepage / browse pages body ──────────────────────────────────────── */
+.homepage, .browse-page { min-height: 100vh; background: var(--bg-primary); }
 .homepage-body {
   max-width: 1400px; margin: 0 auto; padding: 0 1.25rem 5rem;
   position: relative; z-index: 1;
+  /* Pagination scroll target: listing top sits right below the sticky navbar */
+  scroll-margin-top: 78px;
   @media (min-width: 640px) { padding: 0 2rem 5rem; }
 }
+.browse-page .homepage-body { padding-top: 1.5rem; }
 
 /* ─── Filter bar ─────────────────────────────────────────────────────────── */
 .filterbar-v2 {
@@ -775,25 +807,6 @@
 .movie-card-dot   { color: var(--border-subtle); }
 .movie-card-lang  { color: var(--text-muted); font-weight: 500; text-transform: uppercase; }
 
-/* ─── Movie Card Quality Badge ───────────────────────────────────────────── */
-.movie-card-quality-badge {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  background: rgba(3, 0, 20, 0.75);
-  border: 1px solid rgba(171, 139, 255, 0.35);
-  color: #D6C7FF;
-  font-size: 0.6rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  padding: 2px 6px;
-  border-radius: 5px;
-  backdrop-filter: blur(6px);
-  z-index: 2;
-  pointer-events: none;
-  text-transform: uppercase;
-}
-
 /* ─── Skeleton ───────────────────────────────────────────────────────────── */
 .skeleton-card { background: var(--bg-card); border-radius: 14px; overflow: hidden; }
 .skeleton-poster { width: 100%; aspect-ratio: 2/3; }
@@ -807,8 +820,6 @@
 @keyframes skeleton-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
 /* ─── Spinner ────────────────────────────────────────────────────────────── */
-.spinner-wrap { display: flex; justify-content: center; align-items: center; padding: 2rem; }
-.spinner-svg  { animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* ─── Pagination ─────────────────────────────────────────────────────────── */
@@ -906,7 +917,6 @@
   color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1rem;
 }
 .details-rating { display: flex; align-items: center; gap: 5px; color: var(--text-white); font-weight: 700; }
-.details-star   { width: 16px; height: 16px; object-fit: contain; }
 .details-dot    { color: var(--border-subtle); }
 .details-genres { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem; }
 .details-genre-pill {
@@ -968,9 +978,8 @@
 
 /* ─── Video Player ───────────────────────────────────────────────────────── */
 .vp-container {
-  background: #070515; border-radius: 16px; overflow: clip;
+  background: #070515; border-radius: 16px; overflow: hidden;
   border: 1px solid rgba(171,139,255,0.12); box-shadow: 0 8px 40px rgba(0,0,0,0.4);
-
 }
 .vp-server-bar {
   display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem;
@@ -986,8 +995,8 @@
   &:hover { background: rgba(171,139,255,0.1); border-color: rgba(171,139,255,0.3); color: #D6C7FF; }
 }
 .vp-server-tab--active { background: rgba(171,139,255,0.18); border-color: var(--color-accent); color: var(--color-accent); }
-.vp-player-wrap { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; isolation: isolate; touch-action: none;}
-.vp-iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; display: block; pointer-events: auto;}
+.vp-player-wrap { position: relative; width: 100%; aspect-ratio: 16/9; background: #000; }
+.vp-iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; display: block; }
 .vp-loading-overlay, .vp-error-overlay {
   position: absolute; inset: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; background: #030014; z-index: 5; gap: 0.75rem;
@@ -1021,6 +1030,28 @@
   &:hover { background: rgba(171,139,255,0.22); border-color: var(--color-accent); }
 }
 .vp-error-icon { width: 40px; height: 40px; margin-bottom: 0.25rem; }
+
+/* Prev / Next episode controls under the player */
+.vp-episode-nav {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap;
+}
+.vp-episode-nav .vp-episode-nav-btn { flex-shrink: 0; }
+.vp-episode-nav-btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  background: var(--color-accent-soft); border: 1px solid var(--border-accent);
+  color: #D6C7FF; font-size: 0.85rem; font-weight: 600;
+  font-family: inherit; padding: 0.5rem 1.2rem; border-radius: 999px;
+  cursor: pointer; transition: background 0.18s, border-color 0.18s, color 0.18s;
+  &:hover { background: rgba(171,139,255,0.24); border-color: var(--color-accent); color: #fff; }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+}
+.vp-episode-nav-spacer { flex: 1 1 0; min-width: 0; }
+.vp-episode-nav-current {
+  font-size: 0.8rem; font-weight: 700; letter-spacing: 0.03em;
+  color: var(--text-muted); white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
 
 /* ── Video Player Shortcuts bar — part of the vp-container ─────────────── */
 .vp-shortcuts-bar {
@@ -1142,21 +1173,444 @@
 .site-footer-sep  { color: var(--border-subtle); }
 .site-footer-link { color: var(--text-muted); text-decoration: none; transition: color 0.15s; &:hover { color: var(--color-accent); } }
 
-/* ─── Pattern / Trending ─────────────────────────────────────────────────── */
-.pattern {
-  @apply bg-hero-pattern w-full h-screen bg-center bg-cover absolute z-0;
-  pointer-events: none;
+/* ─── Cast strip ─────────────────────────────────────────────────────────── */
+.cast-section { margin-top: 3rem; }
+.cast-heading-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; margin-bottom: 1.25rem;
 }
-.trending {
-  @apply mt-20;
-  & ul { @apply flex flex-row overflow-y-auto gap-5 -mt-10 w-full hide-scrollbar; }
-  & ul li { @apply min-w-57.5 flex flex-row items-center; }
-  & ul li p { @apply fancy-text mt-5.5 text-nowrap; }
-  & ul li img { @apply w-31.75 h-40.75 rounded-lg object-cover -ml-3.5; }
+.cast-heading-row .details-player-heading { margin-bottom: 0; }
+.cast-nav { display: flex; gap: 0.5rem; flex-shrink: 0; }
+.cast-nav-btn {
+  width: 38px; height: 38px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--border-subtle); border: 1px solid var(--border-subtle);
+  color: var(--text-secondary); cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  font-family: inherit;
+  &:hover:not(:disabled) { background: var(--color-accent-soft); border-color: var(--border-accent); color: #D6C7FF; }
+  &:disabled { opacity: 0.35; cursor: not-allowed; }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+}
+.cast-strip {
+  display: flex; gap: 0.85rem; overflow-x: auto;
+  padding-bottom: 0.75rem;
+  scroll-behavior: smooth;
+  -ms-overflow-style: none; scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+  /* Snap to card boundaries so sliding feels deliberate */
+  scroll-snap-type: x proximity;
+}
+.cast-strip .cast-card { scroll-snap-align: start; }
+.cast-card {
+  flex: 0 0 110px; text-align: center;
+  @media (min-width: 640px) { flex-basis: 120px; }
+}
+.cast-photo-wrap {
+  aspect-ratio: 2/3; border-radius: 10px; overflow: hidden;
+  background: var(--bg-secondary); border: 1px solid var(--border-card);
+  margin-bottom: 0.4rem;
+}
+.cast-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cast-photo--placeholder {
+  display: flex; align-items: center; justify-content: center; font-size: 1.6rem;
+}
+.cast-name {
+  margin: 0; font-size: 0.78rem; font-weight: 700; color: var(--text-white);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cast-character {
+  margin: 0.1rem 0 0; font-size: 0.7rem; color: var(--text-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ─── TV seasons & episodes ─────────────────────────────────────────────── */
+.seasons-section { margin-top: 3rem; }
+.season-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+@media (max-width: 480px) {
+  .season-cards { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.7rem; }
+}
+.season-card {
+  display: flex; flex-direction: column; text-align: left;
+  background: var(--bg-card); border: 1px solid var(--border-card);
+  border-radius: 12px; overflow: hidden; cursor: pointer;
+  padding: 0; color: inherit; font-family: inherit;
+  transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), border-color 0.18s, box-shadow 0.18s;
+  &:hover { transform: translateY(-3px); border-color: rgba(171,139,255,0.35); box-shadow: var(--shadow-hover); }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+}
+.season-card--active {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent) inset, 0 6px 20px rgba(171,139,255,0.18);
+}
+.season-card-poster-wrap {
+  position: relative; aspect-ratio: 2/3; overflow: hidden;
+  background: var(--bg-secondary); flex-shrink: 0;
+}
+.season-card-poster {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  transition: transform 0.35s ease;
+}
+.season-card:hover .season-card-poster { transform: scale(1.06); }
+.season-card-poster-fallback {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.6rem; font-weight: 800; color: rgba(171,139,255,0.75);
+  background: linear-gradient(145deg, rgba(171,139,255,0.12), rgba(3,0,20,0.55));
+  letter-spacing: 0.02em;
+}
+.season-card-info {
+  display: flex; flex-direction: column; gap: 0.2rem;
+  padding: 0.55rem 0.65rem 0.65rem;
+}
+.season-card-name {
+  font-size: 0.85rem; font-weight: 700; color: var(--text-white);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.season-card--active .season-card-name { color: var(--color-accent); }
+.season-card-meta {
+  font-size: 0.72rem; color: var(--text-muted); font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.season-episodes-block { animation: fade-in 0.25s ease; }
+.season-episodes-heading {
+  font-size: 1.1rem; font-weight: 700; color: var(--text-white);
+  margin: 0 0 1rem;
+}
+.season-episodes-empty {
+  color: var(--text-muted); font-size: 0.9rem;
+  padding: 1rem 0;
+}
+/* Episode pagination: 12 per page */
+.episode-pager {
+  display: flex; align-items: center; justify-content: center;
+  flex-wrap: wrap; gap: 0.35rem; margin-top: 1.5rem;
+}
+.episode-pager-btn {
+  min-width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--border-subtle); border: 1px solid var(--border-subtle);
+  color: var(--text-secondary); font-size: 0.85rem; font-weight: 600;
+  font-family: inherit; border-radius: 8px; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  padding: 0 0.45rem;
+  &:hover:not(:disabled) { background: var(--color-accent-soft); border-color: rgba(171,139,255,0.35); color: #D6C7FF; }
+  &:disabled { opacity: 0.3; cursor: not-allowed; }
+}
+.episode-pager-btn--active {
+  background: rgba(171,139,255,0.22) !important;
+  border-color: var(--color-accent) !important;
+  color: var(--color-accent) !important;
+}
+.episode-pager-btn--arrow { font-size: 1.1rem; }
+.episode-pager-btn--ellipsis {
+  border-color: transparent; background: transparent; color: var(--text-muted); cursor: default;
+  &:hover { background: transparent; border-color: transparent; color: var(--text-muted); }
+}
+.episode-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column; gap: 0.75rem;
+}
+.episode-row {
+  display: flex; gap: 1rem; align-items: flex-start;
+  background: var(--bg-card); border: 1px solid var(--border-card);
+  border-radius: 12px; padding: 0.7rem;
+  transition: border-color 0.15s, background 0.15s;
+}
+.episode-row--active { border-color: var(--border-accent); background: var(--color-accent-soft); }
+.episode-row--skeleton { height: 96px; border-color: transparent; }
+.episode-still-wrap {
+  position: relative; flex-shrink: 0;
+  width: 150px; aspect-ratio: 16/9; border-radius: 8px; overflow: hidden;
+  background: var(--bg-secondary);
+  @media (max-width: 560px) { width: 112px; }
+}
+.episode-still { width: 100%; height: 100%; object-fit: cover; display: block; }
+.episode-still--placeholder {
+  display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+}
+.episode-play-btn {
+  position: absolute; inset: 0; margin: auto;
+  width: 42px; height: 42px; border-radius: 50%; border: none;
+  background: rgba(171,139,255,0.92); color: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 20px rgba(171,139,255,0.55);
+  transition: transform 0.15s ease;
+  padding-left: 3px;
+  &:hover { transform: scale(1.08); }
+}
+.episode-info { flex: 1; min-width: 0; }
+.episode-title-row {
+  display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap;
+  margin-bottom: 0.35rem;
+}
+.episode-number {
+  font-size: 0.72rem; font-weight: 800; color: var(--color-accent);
+  letter-spacing: 0.04em;
+}
+.episode-title {
+  margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-white);
+  line-height: 1.3;
+}
+.episode-now-playing {
+  font-size: 0.66rem; font-weight: 800; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--color-accent);
+  border: 1px solid var(--border-accent); border-radius: 999px;
+  padding: 1px 7px;
+}
+.episode-overview {
+  margin: 0 0 0.4rem; font-size: 0.84rem; line-height: 1.5;
+  color: var(--text-secondary);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.episode-meta {
+  display: flex; gap: 0.8rem; flex-wrap: wrap;
+  font-size: 0.72rem; color: var(--text-muted); font-weight: 600;
 }
 
 /* ─── Shared animations ──────────────────────────────────────────────────── */
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══ BingeTime updates (v4) ═══════════════════════════════════════════════ */
+
+/* ─── Primary nav — bigger, clearly the main navigation ──────────────────── */
+.navbar-links { flex: 1 1 auto; min-width: 0; gap: 1.4rem; }
+.navbar-link {
+  position: relative;
+  color: var(--text-secondary); text-decoration: none;
+  font-size: 1.06rem; font-weight: 650;
+  padding: 0.45rem 0.15rem 0.5rem;
+  white-space: nowrap;
+  transition: color 0.2s;
+  &:hover { color: #D6C7FF; }
+}
+.navbar-link::after {
+  content: '';
+  position: absolute; left: 0.15rem; right: 0.15rem; bottom: 0.05rem;
+  height: 2.5px; border-radius: 999px;
+  background: var(--color-accent);
+  opacity: 0; transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+.navbar-link:hover::after { opacity: 0.45; transform: scaleX(0.55); }
+.navbar-link--active {
+  color: var(--color-accent); font-weight: 800;
+  &:hover { color: var(--color-accent); }
+}
+.navbar-link--active::after { opacity: 1; transform: scaleX(1); }
+[data-theme="light"] .navbar-link:hover { color: var(--color-accent-dim); }
+[data-theme="light"] .navbar-link--active { color: var(--color-accent-dim); }
+[data-theme="light"] .navbar-link--active::after { background: var(--color-accent-dim); }
+
+/* ─── Navbar auth (top right) ─────────────────────────────────────────────── */
+.navbar-auth-btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  background: var(--color-accent-soft); border: 1px solid var(--border-accent);
+  color: #D6C7FF; font-size: 0.85rem; font-weight: 700;
+  font-family: inherit; padding: 0.45rem 1rem;
+  border-radius: 999px; cursor: pointer; white-space: nowrap;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  &:hover { background: rgba(171,139,255,0.24); border-color: var(--color-accent); color: #fff; }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+}
+[data-theme="light"] .navbar-auth-btn { color: var(--color-accent-dim); }
+[data-theme="light"] .navbar-auth-btn:hover { color: var(--color-accent-dim); }
+
+.navbar-user { position: relative; display: flex; align-items: center; flex-shrink: 0; }
+.navbar-user-chip {
+  display: inline-flex; align-items: center; gap: 0.45rem;
+  background: transparent; border: 1px solid var(--border-subtle);
+  color: var(--text-secondary); font-family: inherit;
+  padding: 0.2rem 0.65rem 0.2rem 0.2rem;
+  border-radius: 999px; cursor: pointer;
+  transition: border-color 0.2s, background 0.2s, color 0.2s;
+  &:hover { border-color: var(--border-accent); background: var(--color-accent-soft); color: var(--text-white); }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+}
+.navbar-user-avatar {
+  width: 25px; height: 25px; border-radius: 50%; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #7c5cbf, #AB8BFF);
+  color: #fff; font-size: 0.72rem; font-weight: 800;
+}
+.navbar-user-name {
+  font-size: 0.82rem; font-weight: 700;
+  max-width: 130px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.navbar-user-menu {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 950;
+  min-width: 215px; background: var(--bg-panel);
+  border: 1px solid var(--border-accent); border-radius: 12px;
+  padding: 0.7rem; box-shadow: 0 18px 50px rgba(0,0,0,0.45);
+  display: flex; flex-direction: column; gap: 0.15rem;
+  animation: suggestions-in 0.18s cubic-bezier(0.22,0.61,0.36,1);
+}
+.navbar-user-menu-email {
+  margin: 0; font-size: 0.8rem; font-weight: 700;
+  color: var(--text-white); overflow-wrap: anywhere;
+}
+.navbar-user-menu-demo {
+  margin: 0 0 0.45rem; font-size: 0.68rem; color: var(--text-muted);
+}
+.navbar-user-menu-item {
+  text-align: left; background: var(--border-subtle); border: 1px solid transparent;
+  color: var(--text-primary); font-family: inherit;
+  font-size: 0.82rem; font-weight: 600;
+  padding: 0.45rem 0.7rem; border-radius: 8px; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  &:hover { background: rgba(248,113,113,0.15); border-color: rgba(248,113,113,0.3); color: #f87171; }
+}
+
+/* ─── Video quality badge (only when the source quality is known) ─────────── */
+.vp-quality-badge {
+  margin-left: auto;
+  font-size: 0.62rem; font-weight: 800; letter-spacing: 0.1em;
+  padding: 2px 8px; border-radius: 4px;
+  background: rgba(171,139,255,0.16); border: 1px solid var(--border-accent);
+  color: #D6C7FF; text-transform: uppercase; line-height: 1.7;
+}
+[data-theme="light"] .vp-quality-badge { color: var(--color-accent-dim); }
+
+/* ─── Hero (featured carousel) in light mode ────────────────────────────────
+   The dark cinematic gradient tints the whole hero purple in light mode and
+   fights the page background. In light mode the gradient layers are removed:
+   the photo shows clean, and the text sits on a soft neutral bottom scrim
+   so it stays readable and blends into the page. Dark mode keeps the full
+   gradient effect untouched. */
+[data-theme="light"] .carousel-gradient-overlay,
+[data-theme="light"] .carousel-gradient-left { background: none; }
+[data-theme="light"] .carousel-gradient-bottom {
+  background: linear-gradient(to top, var(--bg-primary) 10%, rgba(255,255,255,0) 62%);
+}
+[data-theme="light"] .carousel-content {
+  background: linear-gradient(to top, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0) 52%);
+}
+[data-theme="light"] .carousel-title,
+[data-theme="light"] .carousel-rating { color: #1a1535; text-shadow: none; }
+[data-theme="light"] .carousel-year  { color: var(--text-secondary); }
+[data-theme="light"] .carousel-dot   { color: rgba(26,21,53,0.25); }
+[data-theme="light"] .carousel-overview { color: var(--text-secondary); }
+[data-theme="light"] .carousel-type-label {
+  background: rgba(124,92,191,0.1); border-color: rgba(124,92,191,0.35);
+  color: var(--color-accent-dim);
+}
+[data-theme="light"] .carousel-genre-pill {
+  background: rgba(124,92,191,0.08); border-color: rgba(124,92,191,0.28);
+  color: var(--color-accent-dim);
+}
+[data-theme="light"] .carousel-btn--secondary {
+  background: rgba(255,255,255,0.65);
+  border-color: rgba(26,21,53,0.2) !important;
+  color: #1a1535; backdrop-filter: none;
+  &:hover { background: rgba(255,255,255,0.92); }
+}
+[data-theme="light"] .carousel-arrow {
+  background: rgba(255,255,255,0.55); border-color: rgba(26,21,53,0.18);
+  color: #1a1535;
+  &:hover { background: rgba(171,139,255,0.22); border-color: rgba(124,92,191,0.45); }
+}
+[data-theme="light"] .carousel-dot-btn { background: rgba(26,21,53,0.22); }
+[data-theme="light"] .carousel-dot-btn--active { background: var(--color-accent); }
+[data-theme="light"] .carousel-skeleton { background: #ece8fb; }
+
+/* ─── Auth modal (prototype login / register) ────────────────────────────── */
+.auth-modal-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgba(3,0,20,0.8);
+  backdrop-filter: blur(10px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+  animation: fade-in 0.15s ease;
+}
+.auth-modal {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-accent);
+  border-radius: 18px;
+  padding: 1.6rem 1.75rem 1.4rem;
+  width: 100%; max-width: 400px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(171, 139, 255, 0.1);
+  animation: suggestions-in 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.auth-modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 1.1rem;
+}
+.auth-modal-title {
+  font-size: 1.15rem; font-weight: 800;
+  color: var(--text-white); margin: 0;
+}
+.auth-tabs {
+  display: flex; gap: 0.35rem;
+  background: var(--border-subtle);
+  border-radius: 10px; padding: 0.3rem;
+  margin-bottom: 1.15rem;
+}
+.auth-tab {
+  flex: 1; border: none; background: transparent;
+  color: var(--text-secondary); font-family: inherit;
+  font-size: 0.85rem; font-weight: 700;
+  padding: 0.5rem 0.25rem; border-radius: 8px; cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+.auth-tab--active {
+  background: var(--bg-secondary); color: var(--color-accent);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+[data-theme="light"] .auth-tab--active { color: var(--color-accent-dim); }
+.auth-form { display: flex; flex-direction: column; gap: 0.85rem; }
+.auth-field { display: flex; flex-direction: column; gap: 0.35rem; }
+.auth-label {
+  font-size: 0.78rem; font-weight: 700;
+  color: var(--text-secondary); letter-spacing: 0.02em;
+}
+.auth-input {
+  background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+  color: var(--text-white); font-family: inherit; font-size: 0.9rem;
+  padding: 0.6rem 0.85rem; border-radius: 10px; outline: none; width: 100%;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  &:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-accent-soft); }
+  &::placeholder { color: var(--text-muted); }
+}
+.auth-error { margin: 0; font-size: 0.8rem; font-weight: 600; color: #f87171; }
+.auth-submit {
+  margin-top: 0.3rem; border: none; cursor: pointer;
+  background: linear-gradient(135deg, #7c5cbf, #AB8BFF); color: #fff;
+  font-family: inherit; font-size: 0.92rem; font-weight: 700;
+  padding: 0.7rem 1rem; border-radius: 999px;
+  box-shadow: 0 4px 20px rgba(171,139,255,0.4);
+  transition: opacity 0.18s, transform 0.15s;
+  &:hover:not(:disabled) { opacity: 0.92; transform: scale(1.02); }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+.auth-modal-note {
+  margin: 1.1rem 0 0; padding-top: 0.9rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.72rem; line-height: 1.5;
+  color: var(--text-muted); text-align: center;
+}
+
+/* ─── Navbar small-screen tuning for the larger nav links + login ─────────── */
+@media (max-width: 640px) {
+  .navbar-link { font-size: 0.98rem; padding: 0.4rem 0.1rem 0.45rem; }
+  .navbar-links { gap: 1rem; }
+  .navbar-right { gap: 0.5rem; }
+}
+@media (max-width: 479px) {
+  .navbar-link { font-size: 0.9rem; }
+  .navbar-links { gap: 0.75rem; }
+  .navbar-logo-icon { font-size: 1.15rem; }
+  .navbar-auth-label { display: none; }
+  .navbar-auth-btn { padding: 0.45rem 0.6rem; }
+  .navbar-user-name { display: none; }
+  .navbar-user-menu { right: -8px; }
 }

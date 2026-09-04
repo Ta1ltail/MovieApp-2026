@@ -1,26 +1,36 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchTMDB, getPosterUrl } from '../lib/tmdb'
+import { fetchTMDB, getPosterUrl, mediaTitle, mediaYear, rankSearchResults } from '../lib/tmdb'
 import { cachedFetch } from '../lib/cache'
 
 const slugify = (str) =>
   str?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') ?? ''
 
+// Searches both Movies and TV Series, ranks by relevance + popularity, and
+// returns the top mixed hits.
 const searchSuggestions = (query) => {
   const key = `suggest:${query}`
-  return cachedFetch(key, () =>
-    fetchTMDB('/search/movie', { query, page: 1, include_adult: false, language: 'en-US' })
-      .then(d => (d.results ?? []).slice(0, 6))
-  )
+  return cachedFetch(key, async () => {
+    const [movies, tv] = await Promise.all([
+      cachedFetch(`suggest:movie:${query}`, () =>
+        fetchTMDB('/search/movie', { query, page: 1, include_adult: false, language: 'en-US' })
+          .then(d => (d.results ?? []).map(m => ({ ...m, media_type: 'movie' })))
+      ),
+      cachedFetch(`suggest:tv:${query}`, () =>
+        fetchTMDB('/search/tv', { query, page: 1, include_adult: false, language: 'en-US' })
+          .then(d => (d.results ?? []).map(t => ({ ...t, media_type: 'tv' })))
+      ),
+    ])
+    return rankSearchResults(query, [...movies, ...tv]).slice(0, 8)
+  })
 }
 
 /**
- * SearchSuggestions — dropdown shown when typing in a search field.
+ * SearchSuggestions — dropdown shown when typing in the navbar search.
  *
  * Props:
- *  query       — current input value (already debounced externally or debounced here)
+ *  query       — current input value
  *  onSelect    — called when user picks a suggestion (closes dropdown)
- *  inputRef    — ref to the input so we can check focus
  *  isVisible   — parent controls visibility
  *  onClose     — parent closes the dropdown
  */
@@ -29,24 +39,40 @@ const SearchSuggestions = ({ query, onSelect, isVisible, onClose }) => {
   const [loading,   setLoading]   = useState(false)
   const [active,    setActive]    = useState(-1)
   const listRef = useRef(null)
-  const abortRef = useRef(null)
+  // The query the current results belong to, so a late response for an
+  // outdated query is ignored instead of overwriting newer results.
+  const latestQueryRef = useRef('')
+
+  // Clear output as soon as the query changes (or becomes too short) — a
+  // guarded render-phase update instead of a sync setState inside an effect.
+  const [prevQuery, setPrevQuery] = useState(query)
+  if (prevQuery !== query) {
+    setPrevQuery(query)
+    setResults([])
+    setActive(-1)
+    setLoading(false)
+  }
 
   // Debounce + fetch
   useEffect(() => {
-    if (!query || query.trim().length < 2) { setResults([]); return }
+    const q = query.trim()
+    if (q.length < 2) return
+    latestQueryRef.current = q
 
     const t = setTimeout(async () => {
-      abortRef.current?.abort()
       setLoading(true)
       try {
-        const data = await searchSuggestions(query.trim())
+        const data = await searchSuggestions(q)
+        if (latestQueryRef.current !== q) return
         setResults(data)
         setActive(-1)
       } catch { /* ignore */ }
-      finally { setLoading(false) }
+      finally {
+        if (latestQueryRef.current === q) setLoading(false)
+      }
     }, 250)
 
-    return () => { clearTimeout(t); abortRef.current?.abort() }
+    return () => clearTimeout(t)
   }, [query])
 
   // Keyboard navigation
@@ -95,18 +121,20 @@ const SearchSuggestions = ({ query, onSelect, isVisible, onClose }) => {
           Searching…
         </div>
       )}
-      {results.map((movie, i) => {
-        const year   = movie.release_date?.split('-')[0] ?? ''
-        const poster = getPosterUrl(movie.poster_path, 'w92')
+      {results.map((item, i) => {
+        const type    = item.media_type === 'tv' ? 'tv' : 'movie'
+        const title   = mediaTitle(item)
+        const year    = mediaYear(item) ?? ''
+        const poster  = getPosterUrl(item.poster_path, 'w92')
         const isActive = i === active
         return (
           <Link
-            key={movie.id}
-            to={`/movie/${movie.id}?title=${slugify(movie.title)}`}
+            key={`${type}-${item.id}`}
+            to={`/${type}/${item.id}?title=${slugify(title)}`}
             className={`search-suggestion-item${isActive ? ' search-suggestion-item--active' : ''}`}
             role="option"
             aria-selected={isActive}
-            onClick={() => onSelect?.(movie)}
+            onClick={() => onSelect?.(item)}
             onMouseEnter={() => setActive(i)}
           >
             <div className="search-suggestion-poster">
@@ -116,12 +144,13 @@ const SearchSuggestions = ({ query, onSelect, isVisible, onClose }) => {
               }
             </div>
             <div className="search-suggestion-info">
-              <span className="search-suggestion-title">{movie.title}</span>
+              <span className="search-suggestion-title">{title}</span>
               {year && <span className="search-suggestion-year">{year}</span>}
             </div>
-            {movie.vote_average > 0 && (
+            <span className="search-suggestion-type">{type === 'tv' ? 'TV' : 'Movie'}</span>
+            {item.vote_average > 0 && (
               <span className="search-suggestion-rating">
-                ★ {movie.vote_average.toFixed(1)}
+                ★ {item.vote_average.toFixed(1)}
               </span>
             )}
           </Link>

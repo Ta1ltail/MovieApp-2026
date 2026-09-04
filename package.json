@@ -1,7 +1,7 @@
 {
-  "name": "learning-react-movie-page",
+  "name": "bingetime",
   "private": true,
-  "version": "0.0.0",
+  "version": "4.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,11 +11,9 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
-    "appwrite": "^25.0.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.15.0",
-    "react-use": "^17.6.0",
     "tailwindcss": "^4.3.0"
   },
   "devDependencies": {

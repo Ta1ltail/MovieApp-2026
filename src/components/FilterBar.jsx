@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo } from 'react'
-import { CATEGORIES } from '../lib/tmdb'
 
 const YEAR_PRESETS = [
   { label: String(new Date().getFullYear()), value: String(new Date().getFullYear()) },
@@ -37,13 +36,13 @@ const IconChevron = ({ open }) => (
 )
 
 const FilterBar = ({
+  categories,
   category, setCategory,
   draftFilters, updateDraftFilter, toggleDraftGenre,
   appliedFilters, removeAppliedFilter, removeAppliedGenre,
   applyFilters, resetFilters,
-  activeFilterCount, hasDraftChanges,
+  hasDraftChanges,
   genres,
-  isSearching,
 }) => {
   const [openSection, setOpenSection] = useState(null)
 
@@ -80,24 +79,20 @@ const FilterBar = ({
 
       {/* ── Row 1: Category tabs + filter trigger buttons ── */}
       <div className="filterbar-top-row">
-        {!isSearching && (
-          <>
-            <div className="filterbar-tabs" role="tablist" aria-label="Movie categories">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.id}
-                  role="tab"
-                  aria-selected={category === cat.id}
-                  className={`filterbar-tab${category === cat.id ? ' filterbar-tab--active' : ''}`}
-                  onClick={() => setCategory(cat.id)}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-            <div className="filterbar-divider" aria-hidden="true" />
-          </>
-        )}
+        <div className="filterbar-tabs" role="tablist" aria-label="Categories">
+          {(categories ?? []).map((cat) => (
+            <button
+              key={cat.id}
+              role="tab"
+              aria-selected={category === cat.id}
+              className={`filterbar-tab${category === cat.id ? ' filterbar-tab--active' : ''}`}
+              onClick={() => setCategory(cat.id)}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+        <div className="filterbar-divider" aria-hidden="true" />
 
         <div className="filterbar-trigger-group">
           {/* Genre */}

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fetchFeaturedMovies, getGenreMap, getBackdropUrl } from '../lib/tmdb'
+import { fetchFeatured, getGenreMap, getBackdropUrl, mediaTitle, mediaYear } from '../lib/tmdb'
 
 const StarIcon = () => (
   <svg width="14" height="14" viewBox="0 0 24 24" fill="#f5c518" aria-hidden="true">
@@ -46,14 +46,13 @@ const FeaturedCarousel = () => {
   const [direction, setDirection]     = useState('next')
 
   const timerRef = useRef(null)
-  const trackRef = useRef(null)
 
   useEffect(() => {
     let cancelled = false
     const load = async () => {
       try {
         const [movies, gmap] = await Promise.all([
-          fetchFeaturedMovies(),
+          fetchFeatured(),
           getGenreMap(),
         ])
         if (!cancelled) {
@@ -133,22 +132,24 @@ const FeaturedCarousel = () => {
   if (slides.length === 0) return null
 
   const slide = slides[current]
-  const year = slide.release_date?.split('-')[0] ?? ''
+  const isTv  = slide.media_type === 'tv'
+  const title = mediaTitle(slide)
+  const year  = mediaYear(slide) ?? ''
   const rating = slide.vote_average?.toFixed(1) ?? 'N/A'
   const genreNames = (slide.genre_ids ?? [])
     .slice(0, 3)
     .map(id => genreMap[id])
     .filter(Boolean)
+  const detailsPath = `/${isTv ? 'tv' : 'movie'}/${slide.id}`
 
   return (
     <section
       className="carousel"
-      aria-label="Featured movies"
+      aria-label="Featured movies and TV series"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
-      ref={trackRef}
     >
       {/* ── Backdrop ── */}
       <div className="carousel-backdrop" aria-hidden="true">
@@ -169,7 +170,7 @@ const FeaturedCarousel = () => {
 
       {/* ── Content ── */}
       <div
-        key={slide.id}
+        key={`${slide.media_type}-${slide.id}`}
         className={`carousel-content ${isAnimating ? `carousel-content--exit-${direction}` : 'carousel-content--enter'}`}
       >
         <div className="carousel-inner">
@@ -180,9 +181,11 @@ const FeaturedCarousel = () => {
             </span>
             {year && <span className="carousel-dot" aria-hidden="true">•</span>}
             {year && <span className="carousel-year">{year}</span>}
+            <span className="carousel-dot" aria-hidden="true">•</span>
+            <span className="carousel-type-label">{isTv ? 'TV Series' : 'Movie'}</span>
           </div>
 
-          <h1 className="carousel-title">{slide.title}</h1>
+          <h1 className="carousel-title">{title}</h1>
 
           {genreNames.length > 0 && (
             <div className="carousel-genres" aria-label="Genres">
@@ -199,16 +202,16 @@ const FeaturedCarousel = () => {
           <div className="carousel-actions">
             <button
               className="carousel-btn carousel-btn--primary"
-              onClick={() => navigate(`/movie/${slide.id}`)}
-              aria-label={`Watch ${slide.title} now`}
+              onClick={() => navigate(detailsPath)}
+              aria-label={`Watch ${title} now`}
             >
               <PlayIcon />
               Watch Now
             </button>
             <button
               className="carousel-btn carousel-btn--secondary"
-              onClick={() => navigate(`/movie/${slide.id}`)}
-              aria-label={`View details for ${slide.title}`}
+              onClick={() => navigate(detailsPath)}
+              aria-label={`View details for ${title}`}
             >
               <InfoIcon />
               Details
@@ -218,21 +221,21 @@ const FeaturedCarousel = () => {
       </div>
 
       {/* ── Navigation arrows ── */}
-      <button className="carousel-arrow carousel-arrow--left" onClick={goPrev} aria-label="Previous movie">
+      <button className="carousel-arrow carousel-arrow--left" onClick={goPrev} aria-label="Previous">
         <ChevronLeft />
       </button>
-      <button className="carousel-arrow carousel-arrow--right" onClick={goNext} aria-label="Next movie">
+      <button className="carousel-arrow carousel-arrow--right" onClick={goNext} aria-label="Next">
         <ChevronRight />
       </button>
 
-      {/* ── Dot indicators — NO slide counter ── */}
+      {/* ── Dot indicators ── */}
       <div className="carousel-dots" role="tablist" aria-label="Slide navigation">
         {slides.map((s, i) => (
           <button
-            key={s.id}
+            key={`${s.media_type}-${s.id}`}
             role="tab"
             aria-selected={i === current}
-            aria-label={`Go to slide ${i + 1}: ${s.title}`}
+            aria-label={`Go to slide ${i + 1}: ${mediaTitle(s)}`}
             className={`carousel-dot-btn ${i === current ? 'carousel-dot-btn--active' : ''}`}
             onClick={() => goTo(i, i > current ? 'next' : 'prev')}
           >
@@ -245,8 +248,6 @@ const FeaturedCarousel = () => {
           </button>
         ))}
       </div>
-
-      {/* Slide counter REMOVED as requested */}
     </section>
   )
 }

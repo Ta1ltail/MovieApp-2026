@@ -17,15 +17,22 @@ const ChevronUpIcon = () => (
 )
 
 const BackToTop = () => {
-  const [visible, setVisible] = useState(false)
   const location = useLocation()
   const isHome = location.pathname === '/'
+  const [visible, setVisible] = useState(() => isHome && window.scrollY > 400)
+  const [prevIsHome, setPrevIsHome] = useState(isHome)
+
+  // Sync visibility when navigating between home and other pages — a guarded
+  // render-phase update instead of a sync setState inside an effect.
+  if (prevIsHome !== isHome) {
+    setPrevIsHome(isHome)
+    setVisible(isHome && window.scrollY > 400)
+  }
 
   useEffect(() => {
-    if (!isHome) { setVisible(false); return }
+    if (!isHome) return
     const onScroll = () => setVisible(window.scrollY > 400)
     window.addEventListener('scroll', onScroll, { passive: true })
-    onScroll()
     return () => window.removeEventListener('scroll', onScroll)
   }, [isHome])
 

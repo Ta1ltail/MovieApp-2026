@@ -9,18 +9,18 @@ const Footer = () => (
     <div className="site-footer-inner">
       {/* Brand */}
       <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
-        🎬 Movie
+        🎬 Binge
         <span style={{
           background: 'linear-gradient(90deg,#D6C7FF,#AB8BFF)',
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
-        }}>App © {new Date().getFullYear()}</span>
+        }}>Time © {new Date().getFullYear()}</span>
       </span>
 
       <span className="site-footer-sep" aria-hidden="true">·</span>
 
       <span style={{ fontSize: '0.72rem', color: 'var(--color-accent)', fontWeight: 600, letterSpacing: '0.04em' }}>
-        v3.6.0
+        Official release - v4.0.1
       </span>
 
       <span className="site-footer-sep" aria-hidden="true">·</span>
@@ -48,8 +48,6 @@ const Footer = () => (
       <a href="mailto:jjavier292002@gmail.com" className="site-footer-link">
         jjavier292002@gmail.com
       </a>
-
-      <span className="site-footer-sep" aria-hidden="true">·</span>
     </div>
   </footer>
 )

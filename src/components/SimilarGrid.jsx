@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchSimilarMovies, getPosterUrl } from '../lib/tmdb'
+import { fetchSimilar, getPosterUrl, mediaTitle, mediaYear } from '../lib/tmdb'
 import LazyImage from './LazyImage'
 
 const StarIcon = () => (
@@ -12,14 +12,13 @@ const StarIcon = () => (
 const slugify = (str) =>
   str?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') ?? ''
 
-const SimilarMovies = ({ movieId }) => {
+const SimilarGrid = ({ mediaType, id, heading = 'You Might Also Like' }) => {
   const [movies, setMovies] = useState([])
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
-    setIsLoading(true)
-    fetchSimilarMovies(movieId)
+    fetchSimilar(mediaType, id)
       .then(data => {
         if (!cancelled) {
           setMovies((data.results ?? []).filter(m => m.poster_path).slice(0, 12))
@@ -28,13 +27,13 @@ const SimilarMovies = ({ movieId }) => {
       .catch(console.error)
       .finally(() => { if (!cancelled) setIsLoading(false) })
     return () => { cancelled = true }
-  }, [movieId])
+  }, [mediaType, id])
 
   if (!isLoading && movies.length === 0) return null
 
   return (
     <section className="similar-section" aria-label="You might also like">
-      <h2 className="similar-heading">You Might Also Like</h2>
+      <h2 className="similar-heading">{heading}</h2>
 
       {isLoading ? (
         <div className="similar-grid">
@@ -51,26 +50,26 @@ const SimilarMovies = ({ movieId }) => {
       ) : (
         <div className="similar-grid">
           {movies.map(movie => {
-            const year   = movie.release_date?.split('-')[0] ?? 'N/A'
+            const year   = mediaYear(movie) || 'N/A'
             const rating = movie.vote_average?.toFixed(1) ?? 'N/A'
             const poster = getPosterUrl(movie.poster_path, 'w342') ?? '/no-movie.svg'
+            const title  = mediaTitle(movie)
             return (
-              // Use Link so all native browser interactions work
               <Link
-                key={movie.id}
-                to={`/movie/${movie.id}?title=${slugify(movie.title)}`}
+                key={`${mediaType}-${movie.id}`}
+                to={`/${mediaType}/${movie.id}?title=${slugify(title)}`}
                 className="similar-card"
-                aria-label={`${movie.title} (${year})`}
+                aria-label={`${title} (${year})`}
                 style={{ textDecoration: 'none' }}
               >
                 <div className="similar-poster-wrap">
-                  <LazyImage src={poster} alt={`${movie.title} poster`} className="similar-poster" />
+                  <LazyImage src={poster} alt={`${title} poster`} className="similar-poster" />
                   <div className="similar-overlay" aria-hidden="true">
                     <span className="similar-play">▶</span>
                   </div>
                 </div>
                 <div className="similar-info">
-                  <p className="similar-title" title={movie.title}>{movie.title}</p>
+                  <p className="similar-title" title={title}>{title}</p>
                   <div className="similar-meta">
                     <StarIcon />
                     <span className="similar-rating">{rating}</span>
@@ -87,4 +86,4 @@ const SimilarMovies = ({ movieId }) => {
   )
 }
 
-export default SimilarMovies
+export default SimilarGrid

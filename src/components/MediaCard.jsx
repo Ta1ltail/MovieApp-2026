@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { getPosterUrl } from '../lib/tmdb'
+import { getPosterUrl, mediaTitle, mediaYear } from '../lib/tmdb'
 import LazyImage from './LazyImage'
 
 const PlayIcon = () => (
@@ -17,18 +17,24 @@ const StarIcon = () => (
 const slugify = (str) =>
   str?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') ?? ''
 
-const MovieCard = ({ movie }) => {
-  const { id, title, vote_average, poster_path, release_date, original_language } = movie
-
-  const posterUrl    = getPosterUrl(poster_path, 'w342') ?? '/no-movie.svg'
-  const year         = release_date?.split('-')[0] ?? 'N/A'
-  const rating       = vote_average ? vote_average.toFixed(1) : 'N/A'
-  const lang         = original_language?.toUpperCase() ?? '—'
-  const ratingColor  = vote_average >= 8 ? '#4ade80' : vote_average >= 6.5 ? '#f5c518' : '#9ca4ab'
+/**
+ * MediaCard — poster card for a Movie or a TV Series.
+ * The media_type (from our TMDB layer, or passed via `mediaType`) decides the
+ * detail link and which date field is shown.
+ */
+const MediaCard = ({ media, mediaType = media?.media_type }) => {
+  const title     = mediaTitle(media)
+  const year      = mediaYear(media) || 'N/A'
+  const type      = mediaType ?? 'movie'
+  const id        = media.id
+  const rating    = media.vote_average ? media.vote_average.toFixed(1) : 'N/A'
+  const lang      = (media.original_language || '—').toUpperCase()
+  const ratingColor = media.vote_average >= 8 ? '#4ade80' : media.vote_average >= 6.5 ? '#f5c518' : '#9ca4ab'
+  const posterUrl = getPosterUrl(media.poster_path, 'w342') ?? '/no-movie.svg'
 
   return (
     <Link
-      to={`/movie/${id}?title=${slugify(title)}`}
+      to={`/${type}/${id}?title=${slugify(title)}`}
       className="movie-card"
       aria-label={`${title} (${year}) — Rating: ${rating}`}
       style={{ textDecoration: 'none' }}
@@ -49,11 +55,11 @@ const MovieCard = ({ movie }) => {
           <span className="movie-card-dot" aria-hidden="true">·</span>
           <span className="movie-card-year">{year}</span>
           <span className="movie-card-dot" aria-hidden="true">·</span>
-          <span className="movie-card-lang">{lang}</span>
+          <span className="movie-card-lang">{type === 'tv' ? 'TV' : lang}</span>
         </div>
       </div>
     </Link>
   )
 }
 
-export default MovieCard
+export default MediaCard
