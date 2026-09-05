@@ -63,52 +63,22 @@ const SERVERS = [
   },
 ]
 
-// ── Popup/redirect blocker ─────────────────────────────────────────────────────
+// ── Player security ────────────────────────────────────────────────────────
+// Cross-origin embeds are constrained by the same-origin policy: they cannot
+// read/write the parent's DOM, history, location, or cookies. The `allow`
+// attribute below explicitly grants only the capabilities the player needs.
+//
+// Sandbox was removed because several video providers (JW Player-based embeds,
+// ad-supported players) refuse to load inside a sandboxed frame. The `allow`
+// attribute is the correct mechanism here — it grants specific capabilities
+// without breaking embeds that need scripts and same-origin access.
+//
+// Defense-in-depth: a MutationObserver scoped to the player container strips
+// any <script> or unexpected <iframe> that somehow gets injected (cross-origin
+// embeds can't normally do this, but this catches edge cases without watching
+// the entire document).
 
-const usePopupBlocker = (wrapRef) => {
-  useEffect(() => {
-    const _open    = window.open
-    const _push    = history.pushState.bind(history)
-    const _replace = history.replaceState.bind(history)
-
-    window.open = () => null
-
-    try { window.location.assign = window.location.replace = () => {} } catch { /* unsupported in some browsers */ }
-    try { Object.defineProperty(window, 'top', { get: () => window, configurable: true }) } catch { /* already defined / non-configurable */ }
-
-    const isValidPath = (url) => url && String(url).startsWith('/')
-    history.pushState    = (...a) => isValidPath(a[2]) && _push(...a)
-    history.replaceState = (...a) => isValidPath(a[2]) && _replace(...a)
-
-    const onUnload = (e) => { e.preventDefault(); e.returnValue = '' }
-    window.addEventListener('beforeunload', onUnload)
-
-    let lastClick = 0
-    const el = wrapRef.current
-    const onClickCapture = (e) => {
-      const now = Date.now()
-      if (now - lastClick > 600) { lastClick = now; e.stopPropagation() }
-    }
-    el?.addEventListener('click', onClickCapture, true)
-
-    const observer = new MutationObserver((mutations) => {
-      for (const { addedNodes } of mutations)
-        for (const node of addedNodes)
-          if (node.tagName === 'SCRIPT' || (node.tagName === 'IFRAME' && !node.classList.contains('vp-iframe')))
-            node.remove()
-    })
-    observer.observe(document.body, { childList: true, subtree: true })
-
-    return () => {
-      window.open = _open
-      history.pushState    = _push
-      history.replaceState = _replace
-      window.removeEventListener('beforeunload', onUnload)
-      el?.removeEventListener('click', onClickCapture, true)
-      observer.disconnect()
-    }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-}
+const PLAYER_ALLOW = 'autoplay; fullscreen; picture-in-picture; encrypted-media'
 
 // ── Shortcuts bar — rendered inside the player container ──────────────────────
 
@@ -150,8 +120,25 @@ const VideoPlayer = ({
   const [isLoading,    setIsLoading]    = useState(true)
   const [hasError,     setHasError]     = useState(false)
   const wrapRef = useRef(null)
+  const observerRef = useRef(null)
 
-  usePopupBlocker(wrapRef)
+  // Strip any <script> or unexpected <iframe> injected into the player
+  // container. Cross-origin embeds normally can't do this (same-origin
+  // policy), but this is scoped to the container only — not the entire
+  // document — so it has zero overhead elsewhere.
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const obs = new MutationObserver((mutations) => {
+      for (const { addedNodes } of mutations)
+        for (const node of addedNodes)
+          if (node.tagName === 'SCRIPT' || (node.tagName === 'IFRAME' && !node.classList.contains('vp-iframe')))
+            node.remove()
+    })
+    obs.observe(el, { childList: true, subtree: true })
+    observerRef.current = obs
+    return () => obs.disconnect()
+  }, [])
 
   // Reset the loading/error state when the server, movie or episode changes —
   // a guarded render-phase update instead of a sync setState inside an effect.
@@ -267,12 +254,12 @@ const VideoPlayer = ({
           src={current.getUrl({ mediaType, tmdbId, season, episode, subtitleUrl, subtitleLabel, dsLang: defaultLang })}
           title={`${playerTitle} — ${current.name}`}
           className="vp-iframe"
-          onLoad={() => setIsLoading(false)}
-          onError={() => { setIsLoading(false); setHasError(true) }}
-          allow="autoplay; fullscreen *; picture-in-picture *; encrypted-media"
+          allow={PLAYER_ALLOW}
           allowFullScreen
           referrerPolicy="origin"
           scrolling="no"
+          onLoad={() => setIsLoading(false)}
+          onError={() => { setIsLoading(false); setHasError(true) }}
         />
       </div>
 

@@ -36,6 +36,7 @@ const SearchSuggestions = ({ query, onSelect, isVisible, onClose }) => {
   const [results,   setResults]   = useState([])
   const [loading,   setLoading]   = useState(false)
   const [active,    setActive]    = useState(-1)
+  const [error,    setError]    = useState(null)
   const listRef = useRef(null)
   // The query the current results belong to, so a late response for an
   // outdated query is ignored instead of overwriting newer results.
@@ -59,13 +60,15 @@ const SearchSuggestions = ({ query, onSelect, isVisible, onClose }) => {
 
     const t = setTimeout(async () => {
       setLoading(true)
+      setError(null)
       try {
         const data = await searchSuggestions(q)
         if (latestQueryRef.current !== q) return
         setResults(data)
         setActive(-1)
-      } catch { /* ignore */ }
-      finally {
+      } catch (err) {
+        if (latestQueryRef.current === q) setError(err?.message ?? 'Search failed')
+      } finally {
         if (latestQueryRef.current === q) setLoading(false)
       }
     }, 250)
@@ -113,13 +116,18 @@ const SearchSuggestions = ({ query, onSelect, isVisible, onClose }) => {
       aria-label="Search suggestions"
       ref={listRef}
     >
-      {loading && results.length === 0 && (
+      {loading && results.length === 0 && !error && (
         <div className="search-suggestions-loading">
           <span className="search-suggestions-spinner" />
           Searching…
         </div>
       )}
-      {results.map((item, i) => {
+      {error && (
+        <div className="search-suggestions-loading" style={{ color: 'var(--text-muted)' }}>
+          Could not search — try again
+        </div>
+      )}
+      {!error && results.map((item, i) => {
         const type    = item.media_type === 'tv' ? 'tv' : 'movie'
         const title   = mediaTitle(item)
         const year    = mediaYear(item) ?? ''

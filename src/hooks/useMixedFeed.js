@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { fetchMixedTrending, fetchMixedSearch } from '../lib/tmdb'
 import { useDebounce } from './useDebounce'
@@ -60,13 +60,18 @@ export const useMixedFeed = () => {
 
   // ── URL setters (same semantics as the browse pages) ─────────────────────
 
+  const preSearchPageRef = useRef(1)
+
   const setSearchTerm = useCallback((val) => {
     setSearchParams(prev => {
       const next = new URLSearchParams(prev)
+      const currentSearch = prev.get('q') ?? ''
       if (!val || !val.trim()) {
         next.delete('q')
         next.delete('page')
+        if (preSearchPageRef.current > 1) next.set('page', String(preSearchPageRef.current))
       } else {
+        if (!currentSearch.trim()) preSearchPageRef.current = parseInt(prev.get('page') ?? '1', 10)
         next.set('q', val)
         next.delete('page')
       }
@@ -79,6 +84,7 @@ export const useMixedFeed = () => {
       const next = new URLSearchParams(prev)
       next.delete('q')
       next.delete('page')
+      if (preSearchPageRef.current > 1) next.set('page', String(preSearchPageRef.current))
       return next
     }, { replace: true })
   }, [setSearchParams])

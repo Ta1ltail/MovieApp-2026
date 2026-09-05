@@ -36,7 +36,8 @@ const SeasonsSection = ({
 
   // Pagination state, reset whenever the selected season changes. Guarded
   // render-phase reset (same pattern as the rest of the app — no effects).
-  const [epPage, setEpPage] = useState(0)
+  // 1-indexed to match the rest of the app's pagination conventions.
+  const [epPage, setEpPage] = useState(1)
   const syncSig = [
     seasonNumber,
     activePlay && activePlay.season_number === seasonNumber ? activePlay.episode_number : '',
@@ -49,17 +50,17 @@ const SeasonsSection = ({
     setPrevSyncSig(syncSig)
     // No active episode here (season switch / empty list) → back to page 1.
     if (!activePlay || activePlay.season_number !== seasonNumber) {
-      setEpPage(0)
+      setEpPage(1)
     } else {
       // Otherwise jump to the page containing the playing episode.
       const idx = seasonEpisodes.findIndex(e => e.episode_number === activePlay.episode_number)
-      if (idx !== -1) setEpPage(Math.floor(idx / EPISODES_PER_PAGE))
+      if (idx !== -1) setEpPage(Math.floor(idx / EPISODES_PER_PAGE) + 1)
     }
   }
 
   const totalPages = Math.max(1, Math.ceil(seasonEpisodes.length / EPISODES_PER_PAGE))
-  const safePage   = Math.min(epPage, totalPages - 1)
-  const startIdx   = safePage * EPISODES_PER_PAGE
+  const safePage   = Math.min(epPage, totalPages)
+  const startIdx   = (safePage - 1) * EPISODES_PER_PAGE
   const visibleEpisodes = seasonEpisodes.slice(startIdx, startIdx + EPISODES_PER_PAGE)
   const showPager  = !episodesLoading && !episodesError && totalPages > 1
 
@@ -218,19 +219,19 @@ const SeasonsSection = ({
             <button
               className="episode-pager-btn episode-pager-btn--arrow"
               onClick={() => setEpPage(safePage - 1)}
-              disabled={safePage === 0}
+              disabled={safePage <= 1}
               aria-label="Previous episodes"
             >
               ‹
             </button>
-            {buildPages(safePage + 1, totalPages).map((p) => {
+            {buildPages(safePage, totalPages).map((p) => {
               if (typeof p === 'string') {
                 const target = p === '…start' ? 1 : totalPages
                 return (
                   <button
                     key={p}
                     className="episode-pager-btn episode-pager-btn--ellipsis"
-                    onClick={() => setEpPage(target - 1)}
+                    onClick={() => setEpPage(target)}
                     aria-label={`Jump to episode page ${target}`}
                   >
                     …
@@ -240,10 +241,10 @@ const SeasonsSection = ({
               return (
                 <button
                   key={p}
-                  className={`episode-pager-btn${p === safePage + 1 ? ' episode-pager-btn--active' : ''}`}
-                  onClick={() => setEpPage(p - 1)}
+                  className={`episode-pager-btn${p === safePage ? ' episode-pager-btn--active' : ''}`}
+                  onClick={() => setEpPage(p)}
                   aria-label={`Episodes ${(p - 1) * EPISODES_PER_PAGE + 1}–${Math.min(p * EPISODES_PER_PAGE, seasonEpisodes.length)}`}
-                  aria-current={p === safePage + 1 ? 'page' : undefined}
+                  aria-current={p === safePage ? 'page' : undefined}
                 >
                   {p}
                 </button>
@@ -252,7 +253,7 @@ const SeasonsSection = ({
             <button
               className="episode-pager-btn episode-pager-btn--arrow"
               onClick={() => setEpPage(safePage + 1)}
-              disabled={safePage >= totalPages - 1}
+              disabled={safePage >= totalPages}
               aria-label="Next episodes"
             >
               ›

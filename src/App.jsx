@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AuthProvider } from './contexts/AuthContext'
@@ -44,11 +44,36 @@ const PageTransitionWrapper = ({ children }) => {
   )
 }
 
+const ApiBanner = ({ visible }) => {
+  if (!visible) return null
+  return (
+    <div className="api-banner" role="alert">
+      <p><strong>TMDB API key missing or invalid.</strong> Add <code>VITE_TMDB_API_KEY</code> to your <code>.env</code> file and restart the dev server.</p>
+    </div>
+  )
+}
+
 const AppInner = () => {
   const { shortcutsOpen, closeShortcuts } = useKeyboardShortcuts()
+  const [apiKeyValid, setApiKeyValid] = useState(() => {
+    const key = import.meta.env.VITE_TMDB_API_KEY
+    return !key || key.trim().length < 10 ? false : null // null = unchecked, false = invalid, true = valid
+  })
+
+  useEffect(() => {
+    const key = import.meta.env.VITE_TMDB_API_KEY
+    if (!key || key.trim().length < 10) return
+    // Probe the API with a cheap endpoint — only runs when key looks valid
+    fetch('https://api.themoviedb.org/3/configuration', {
+      headers: { Authorization: `Bearer ${key}` }
+    })
+      .then(res => { setApiKeyValid(res.ok ? true : false) })
+      .catch(() => setApiKeyValid(false))
+  }, [])
 
   return (
     <>
+      <ApiBanner visible={apiKeyValid === false} />
       <PageTransitionWrapper>
         <Suspense fallback={<RouteFallback />}>
           <Routes>

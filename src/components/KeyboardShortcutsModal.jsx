@@ -15,7 +15,7 @@ const KeyboardShortcutsModal = ({ isOpen, onClose }) => {
     closeRef.current?.focus()
     const prevOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
-    const onKey = (e) => { if (e.key === 'Escape' || e.key === '?') onClose() }
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
     return () => {
       document.removeEventListener('keydown', onKey)

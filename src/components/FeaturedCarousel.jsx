@@ -50,11 +50,13 @@ const FeaturedCarousel = () => {
     if (isAnimating || slides.length === 0) return
     setDirection(dir)
     setIsAnimating(true)
+    setIsPaused(true)
     setTimeout(() => {
       setCurrent(index)
       setIsAnimating(false)
+      setIsPaused(false)
     }, 550)
-  }, [isAnimating, slides.length])
+  }, [isAnimating, slides.length, setIsPaused])
 
   const goNext = useCallback(() => {
     goTo((current + 1) % slides.length, 'next')

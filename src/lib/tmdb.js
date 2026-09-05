@@ -141,19 +141,25 @@ const tvCategories = [
 
 export const CATEGORIES = { movie: movieCategories, tv: tvCategories }
 
-// Decade → date range mapping (field name is applied per type later)
+// Decade → date range mapping (fixed decade boundaries, not rolling).
 const DECADE_RANGES = {
-  '2020s': { gte: '2020-01-01', lte: `${new Date().getFullYear()}-12-31` },
+  '2020s': { gte: '2020-01-01', lte: '2029-12-31' },
   '2010s': { gte: '2010-01-01', lte: '2019-12-31' },
   '2000s': { gte: '2000-01-01', lte: '2009-12-31' },
   '1990s': { gte: '1990-01-01', lte: '1999-12-31' },
 }
 
+const todayStr = () => new Date().toISOString().split('T')[0]
+
 export const buildDiscoverParams = (mediaType, categoryId, filters = {}, page = 1) => {
   const config = MEDIA_CONFIG[mediaType]
   const list   = CATEGORIES[mediaType] ?? []
   const cat    = list.find(c => c.id === categoryId) ?? list[0]
-  const params = { page, include_adult: false, language: 'en-US', sort_by: cat.sortBy, ...cat.extraParams }
+  // Compute the "Latest" cutoff at call time so it always reflects today,
+  // not the day the module was first loaded.
+  const extraParams = cat.extraParams
+  const latestCutoff = cat.id === 'latest' ? { ...extraParams, [config.dateParam + '.lte']: todayStr() } : extraParams
+  const params = { page, include_adult: false, language: 'en-US', sort_by: cat.sortBy, ...latestCutoff }
 
   // Multi-genre support
   if (filters.genreIds?.length) params.with_genres = filters.genreIds.join(',')

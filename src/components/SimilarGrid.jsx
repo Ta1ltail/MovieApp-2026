@@ -8,6 +8,7 @@ import { StarIcon } from './icons'
 const SimilarGrid = ({ mediaType, id, heading = 'You Might Also Like' }) => {
   const [movies, setMovies] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -17,18 +18,24 @@ const SimilarGrid = ({ mediaType, id, heading = 'You Might Also Like' }) => {
           setMovies((data.results ?? []).filter(m => m.poster_path).slice(0, 12))
         }
       })
-      .catch(console.error)
+      .catch(err => {
+        if (!cancelled) setError(err?.message ?? 'Failed to load recommendations')
+      })
       .finally(() => { if (!cancelled) setIsLoading(false) })
     return () => { cancelled = true }
   }, [mediaType, id])
 
-  if (!isLoading && movies.length === 0) return null
+  if (!isLoading && !error && movies.length === 0) return null
 
   return (
     <section className="similar-section" aria-label="You might also like">
       <h2 className="similar-heading">{heading}</h2>
 
-      {isLoading ? (
+      {error ? (
+        <p className="empty-state-text" style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+          Couldn't load recommendations.
+        </p>
+      ) : isLoading ? (
         <div className="similar-grid">
           {Array.from({ length: 6 }, (_, i) => (
             <div key={i} className="similar-card-skeleton">

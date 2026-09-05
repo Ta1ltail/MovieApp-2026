@@ -55,8 +55,8 @@ const LoginPage = () => {
     try {
       // On success `user` updates and the <Navigate> below sends the visitor
       // back where they came from — no manual navigation needed.
-      if (mode === 'login') await login(em, password)
-      else await register(name, em, password)
+      if (mode === 'login') await login(em)
+      else await register(name, em)
     } catch (err) {
       setError(err?.message ?? 'Something went wrong. Please try again.')
     } finally {
