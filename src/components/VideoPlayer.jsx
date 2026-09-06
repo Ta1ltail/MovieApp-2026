@@ -239,6 +239,28 @@ const VideoPlayer = ({
   const handleServerChange = useCallback((i) => { if (i !== activeServer) setActiveServer(i) }, [activeServer])
   const tryNextServer      = useCallback(() => setActiveServer((s) => (s + 1) % SERVERS.length), [])
 
+  // Fullscreen state must be tracked at the document level, not via a prop
+  // on the <iframe>. `fullscreenchange` fires on whichever element actually
+  // entered fullscreen — for `preferWrapperFullscreen` providers that's the
+  // wrapper <div>, not the iframe — and it only bubbles UP to ancestors, so
+  // a listener on the iframe (a descendant of the wrapper) never sees it.
+  // Listening on `document` catches the event regardless of which element
+  // (iframe or wrapper) was actually fullscreened.
+  useEffect(() => {
+    const handleFsChange = () => {
+      const wrap = wrapRef.current
+      const fsEl = document.fullscreenElement
+      const wentFull = !!fsEl && !!wrap && (fsEl === wrap || wrap.contains(fsEl))
+      setIsFullscreen(wentFull)
+    }
+    document.addEventListener('fullscreenchange', handleFsChange)
+    document.addEventListener('webkitfullscreenchange', handleFsChange) // Safari
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange)
+      document.removeEventListener('webkitfullscreenchange', handleFsChange)
+    }
+  }, [])
+
   // Keyboard: F = fullscreen.
   //
   // Note on scope: this listener is attached to `window`, but once the user
@@ -348,10 +370,6 @@ const VideoPlayer = ({
           scrolling="no"
           onLoad={() => setIsLoading(false)}
           onError={() => { setIsLoading(false); setHasError(true) }}
-          onFullscreenChange={() => {
-            const wentFull = !!document.fullscreenElement && document.fullscreenElement === wrapRef.current
-            setIsFullscreen(wentFull)
-          }}
         />
       </div>
 
