@@ -1048,13 +1048,13 @@
 }
 .vp-server-tab--active { background: rgba(171,139,255,0.18); border-color: var(--color-accent); color: var(--color-accent); }
 
-/* Custom fullscreen button — VidSrc only. Sits directly above the embed's
-   controller fullscreen button (bottom-right corner, just over the control
-   bar). Inside .vp-player-wrap so it stays clickable while the wrapper is
-   fullscreen; VidSrc always fullscreens the wrapper, so the button can
-   never be covered/hidden by the fullscreened iframe. */
+/* Custom fullscreen button — VidSrc only. Anchored bottom-right DIRECTLY
+   above the embed's controller fullscreen icon: VidSrc's JW control bar is
+   ~44px tall, so bottom sits just above it with a small gap, and right
+   aligns with the far-right fullscreen icon. Inside .vp-player-wrap so it
+   stays clickable while the wrapper is fullscreen. */
 .vp-fullscreen-btn {
-  position: absolute; bottom: 3.5rem; right: 0.75rem; z-index: 7;
+  position: absolute; bottom: 3.25rem; right: 0.6rem; z-index: 7;
   width: 34px; height: 34px; border-radius: 8px; padding: 0;
   background: rgba(3,0,20,0.65); border: 1px solid rgba(255,255,255,0.2);
   color: #e0d8ff; display: flex; align-items: center; justify-content: center;

@@ -98,15 +98,12 @@ const SERVERS = [
 
 const PLAYER_ALLOW = 'autoplay; fullscreen; picture-in-picture; encrypted-media'
 
-// Fullscreen toggle icons (filled corner-arrow glyphs, Material-style).
+// Fullscreen toggle icon (filled corner-arrow glyph, Material-style).
+// Only ever shown while NOT fullscreen — the button hides during fullscreen
+// (exit via Esc, the F key, or the provider's own controls).
 const ExpandIcon = () => (
   <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="15" height="15">
     <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
-  </svg>
-)
-const CompressIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="15" height="15">
-    <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
   </svg>
 )
 
@@ -354,20 +351,19 @@ const VideoPlayer = ({
 
       {/* ── Player ── */}
       <div className={`vp-player-wrap${isFullscreen ? ' vp-fullscreen-active' : ''}`} ref={wrapRef} data-vp-fullscreen={isFullscreen ? 'true' : 'false'}>
-        {/* Custom fullscreen toggle — VidSrc only. Lives inside the wrapper
-              so it stays anchored to the video, remains clickable while the
-              wrapper is fullscreen, and sits just above the embed's own
-              controller fullscreen button. VidSrc always fullscreens the
-              WRAPPER (never the iframe), so the button can't be covered and
-              disappear after a click. */}
-        {current.showCustomFullscreen && (
+        {/* Custom fullscreen button — VidSrc only, and ONLY while not
+              fullscreen (hidden once fullscreen is active — leave it with
+              Esc, the F key, or the provider's controls). Lives inside the
+              wrapper so it stays anchored to the video and sits directly
+              above the embed's controller fullscreen icon. */}
+        {current.showCustomFullscreen && !isFullscreen && (
           <button
             className="vp-fullscreen-btn"
-            title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (F)'}
-            aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            title="Fullscreen (F)"
+            aria-label="Enter fullscreen"
             onClick={() => requestPlayerFullscreen(wrapRef.current, current)}
           >
-            {isFullscreen ? <CompressIcon /> : <ExpandIcon />}
+            <ExpandIcon />
           </button>
         )}
         {isLoadingOrError && (
