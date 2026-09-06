@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 
-
-
 // Each server builds an embed URL for a movie or a TV episode.
 // Movie URLs are unchanged from previous versions.
 //
@@ -10,12 +8,21 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 // can't be probed for its actual resolution — so servers with no stable
 // known quality (e.g. 2Embed, which mixes sources) leave it out and the
 // badge simply doesn't appear instead of guessing.
+//
+// `preferWrapperFullscreen` marks providers whose embeds run JW Player (or
+// similar) internally. These players intercept fullscreen requests made
+// from the parent page against the <iframe> element itself and silently
+// ignore them — `iframe.requestFullscreen()` resolves (or is a no-op)
+// without ever actually entering fullscreen. For these, we skip the
+// iframe-level attempt entirely and fullscreen the wrapper <div> instead,
+// which reliably works because it doesn't depend on the embed cooperating.
 const SERVERS = [
   {
     id:      'vidsrc-ru',
     name:    'VidSrc',
     badge:   'MULTI',
     quality: 'HD',
+    preferWrapperFullscreen: true,
     getUrl: ({ mediaType, tmdbId, season, episode, subtitleUrl, dsLang = 'en' }) => {
       if (mediaType === 'tv') {
         let url = `https://vidsrc-embed.ru/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
@@ -32,6 +39,7 @@ const SERVERS = [
     name:    'VaPlayer',
     badge:   'HD',
     quality: 'HD',
+    preferWrapperFullscreen: true,
     getUrl: ({ mediaType, tmdbId, season, episode, subtitleUrl, subtitleLabel = 'English' }) => {
       if (mediaType === 'tv') {
         let url = `https://vaplayer.ru/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&autoplay=false`
@@ -48,6 +56,7 @@ const SERVERS = [
     name:    'VidLink',
     badge:   'SUB',
     quality: 'HD',
+    preferWrapperFullscreen: true,
     getUrl: ({ mediaType, tmdbId, season, episode }) => {
       const base = 'primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&tmdb=1&defaultSubtitle=en'
       if (mediaType === 'tv') return `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}?${base}`
@@ -105,6 +114,58 @@ const ShortcutsBar = () => (
     ))}
   </div>
 )
+
+// ── Fullscreen helper ───────────────────────────────────────────────────────
+// Centralizes the "try iframe, verify it actually worked, else fall back to
+// the wrapper" logic so the keyboard shortcut and the button stay in sync
+// and neither one trusts a `requestFullscreen()` call that silently did
+// nothing.
+//
+// Why the old version was broken: `iframe.requestFullscreen` exists as a
+// method on virtually every iframe in modern browsers, so the old
+// `if (iframeReq)` check was almost always true regardless of whether the
+// *provider's own player* would actually honor it. `requestFullscreen()`
+// returns a Promise — a provider that ignores/blocks it typically resolves
+// (or silently no-ops) rather than throwing synchronously, so the old
+// try/catch never caught anything, and the function `return`ed immediately
+// having never confirmed fullscreen actually happened.
+async function requestPlayerFullscreen(wrapEl, server) {
+  if (!wrapEl) return
+
+  const iframe = wrapEl.querySelector('iframe')
+  const tryFullscreen = (el) => {
+    if (!el) return Promise.reject(new Error('no element'))
+    const req = el.requestFullscreen ?? el.webkitRequestFullscreen
+    if (!req) return Promise.reject(new Error('unsupported'))
+    return req.call(el)
+  }
+
+  // Hide loader/error overlays before attempting so the player's own UI
+  // (or the wrapper) is what the user sees once fullscreen lands.
+  const overlays = wrapEl.querySelectorAll('.vp-loading-overlay, .vp-error-overlay')
+  overlays.forEach((o) => { o.style.display = 'none' })
+
+  const restoreOverlays = () => overlays.forEach((o) => { o.style.display = '' })
+
+  // Known JW-Player-style providers ignore iframe-level fullscreen — don't
+  // waste the attempt, go straight to the wrapper.
+  if (!server?.preferWrapperFullscreen && iframe) {
+    try {
+      await tryFullscreen(iframe)
+      // Verify it actually landed on the iframe. If the provider silently
+      // swallowed the request, document.fullscreenElement won't be it.
+      if (document.fullscreenElement === iframe) return
+    } catch {
+      // fall through to wrapper
+    }
+  }
+
+  try {
+    await tryFullscreen(wrapEl)
+  } catch {
+    restoreOverlays()
+  }
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -178,60 +239,27 @@ const VideoPlayer = ({
   const handleServerChange = useCallback((i) => { if (i !== activeServer) setActiveServer(i) }, [activeServer])
   const tryNextServer      = useCallback(() => setActiveServer((s) => (s + 1) % SERVERS.length), [])
 
-  // Keyboard: F = fullscreen
-  // Many embeds (especially JW Player-based providers like VidSrc) ignore
-  // iframe.requestFullscreen(). We try the iframe first (works for plain
-  // iframes that support it), then fall back to fullscreen'ing the wrapper
-  // element, which is more reliable for provider players that render their own
-  // fullscreen UI on top of the page.
+  // Keyboard: F = fullscreen.
+  //
+  // Note on scope: this listener is attached to `window`, but once the user
+  // clicks into a cross-origin iframe, that iframe's *own document* has
+  // focus and keydown events fire there instead — they don't bubble up to
+  // the parent window. So pressing F while focus is inside the embed is
+  // handled entirely by the provider's own player (e.g. JW Player's native
+  // fullscreen shortcut), not by this handler. This listener only fires
+  // when focus is still on the parent page (e.g. right after the page
+  // loads, before the user has clicked into the player).
   useEffect(() => {
     if (typeof document === 'undefined') return
     const onKey = (e) => {
       if (e.key !== 'f' && e.key !== 'F') return
       const target = document.activeElement
       if (target && target.tagName === 'INPUT') return
-
-      const iframe = wrapRef.current?.querySelector('iframe')
-
-      if (iframe) {
-        // Only try iframe fullscreen if it is actually capable of triggering
-        // a fullscreen transition. If the provider's embed refuses it, this
-        // will throw / be a no-op, and we fall back to the wrapper.
-        try {
-          // Safari uses webkit-requestFullscreen; modern browsers use the
-          // standard method. We call the available one via a bound function
-          // so `this` is correct.
-          const iframeReq = iframe.requestFullscreen ?? iframe.webkitRequestFullscreen
-          if (iframeReq) {
-            // Hide any loader/error overlays before going fullscreen so the
-            // player's own UI is what the user sees.
-            const wrap = wrapRef.current
-            if (wrap) {
-              const overlays = wrap.querySelectorAll('.vp-loading-overlay, .vp-error-overlay')
-              overlays.forEach((o) => o.style.display = 'none')
-            }
-            // After the fullscreen transition completes, React's onFullscreenChange
-            // will tick isFullscreen to true and hide the overlays + hint + shortcuts
-            // automatically.
-            iframeReq.call(iframe)
-            return
-          }
-        } catch {
-          // Likely a cross-origin/embed restriction; fall through to wrapper.
-        }
-      }
-
-      // Fallback: fullscreen the player wrapper element. This is the most
-      // reliable path for embeds that don't support iframe-level fullscreen.
-      const wrap = wrapRef.current
-      if (wrap) {
-        const req = wrap.requestFullscreen ?? wrap.webkitRequestFullscreen
-        req?.call(wrap)
-      }
+      requestPlayerFullscreen(wrapRef.current, SERVERS[activeServer])
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [activeServer])
 
   const current = SERVERS[activeServer]
   const playbackLabel = mediaType === 'tv' ? `S${season}E${episode}` : null
@@ -278,37 +306,13 @@ const VideoPlayer = ({
         className="vp-fullscreen-btn"
         title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (F)'}
         aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-        onClick={() => {
-          const iframe = wrapRef.current?.querySelector('iframe')
-          try {
-            if (iframe) {
-              const req = iframe.requestFullscreen ?? iframe.webkitRequestFullscreen
-              if (req) {
-                const wrap = wrapRef.current
-                if (wrap) {
-                  const overlays = wrap.querySelectorAll('.vp-loading-overlay, .vp-error-overlay')
-                  overlays.forEach((o) => o.style.display = 'none')
-                }
-                req.call(iframe)
-                return
-              }
-            }
-          } catch {
-            // fall through
-          }
-
-          const wrap = wrapRef.current
-          if (wrap) {
-            const req = wrap.requestFullscreen ?? wrap.webkitRequestFullscreen
-            req?.call(wrap)
-          }
-        }}
+        onClick={() => requestPlayerFullscreen(wrapRef.current, current)}
       >
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="14" height="14">
           <path d="M21 3H3v18h18V3zm0 2-7 5v5h5l7-5zM3 3l7 5V18H3z"/>
         </svg>
       </button>
-      <div className={`vp-player-wrap${isFullscreen ? ' vp-fullscreen-active' : ''}`} ref={wrapRef}>
+      <div className={`vp-player-wrap${isFullscreen ? ' vp-fullscreen-active' : ''}`} ref={wrapRef} data-vp-fullscreen={isFullscreen ? 'true' : 'false'}>
         {isLoadingOrError && (
           <div className={`vp-loading-overlay${shouldHideOverlays ? ' vp-hidden' : ''}`} aria-live="polite">
             <div className="vp-loading-inner">
@@ -342,10 +346,12 @@ const VideoPlayer = ({
           allowFullScreen
           referrerPolicy="origin"
           scrolling="no"
-        onLoad={() => setIsLoading(false)}
-        onError={() => { setIsLoading(false); setHasError(true) }}
-        onFullscreenChange={() => setIsFullscreen(!!document.fullscreenElement && document.fullscreenElement === wrapRef.current)}
-
+          onLoad={() => setIsLoading(false)}
+          onError={() => { setIsLoading(false); setHasError(true) }}
+          onFullscreenChange={() => {
+            const wentFull = !!document.fullscreenElement && document.fullscreenElement === wrapRef.current
+            setIsFullscreen(wentFull)
+          }}
         />
       </div>
 
