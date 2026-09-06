@@ -16,7 +16,6 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 // without ever actually entering fullscreen. For these, we skip the
 // iframe-level attempt entirely and fullscreen the wrapper <div> instead,
 // which reliably works because it doesn't depend on the embed cooperating.
-
 const SERVERS = [
   {
     id:      'vidsrc-ru',
@@ -36,7 +35,7 @@ const SERVERS = [
     },
   },
   {
-    id:      'vidlink.pro',
+    id:      'vaplayer-ru',
     name:    'VaPlayer',
     badge:   'HD',
     quality: 'HD',
@@ -65,125 +64,7 @@ const SERVERS = [
     },
   },
   {
-    id:      'vixsrc.to',
-    name:    'VixSrc',
-    badge:   'MULTI',
-    quality: 'HD',
-    preferWrapperFullscreen: true,
-    getUrl: ({ mediaType, tmdbId, season, episode, subtitleUrl, dsLang = 'en' }) => {
-      if (mediaType === 'tv') {
-        let url = `https://vixsrc.to/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
-        if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
-        return url
-      }
-      let url = `https://vixsrc.to/embed/movie?tmdb=${tmdbId}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
-      if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
-      return url
-    },
-  },
-  {
-    id:      'vidfast.to',
-    name:    'VidFast',
-    badge:   'HD',
-    quality: 'HD',
-    preferWrapperFullscreen: true,
-    getUrl: ({ mediaType, tmdbId, season, episode, subtitleUrl, dsLang = 'en' }) => {
-      if (mediaType === 'tv') {
-        let url = `https://vidfast.to/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
-        if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
-        return url
-      }
-      let url = `https://vidfast.to/embed/movie?tmdb=${tmdbId}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
-      if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
-      return url
-    },
-  },
-  {
-    id:      'autoembed.co',
-    name:    'AutoEmbed',
-    badge:   'HD',
-    quality: 'HD',
-    preferWrapperFullscreen: true,
-    getUrl: ({ mediaType, tmdbId, season, episode, subtitleUrl, dsLang = 'en' }) => {
-      if (mediaType === 'tv') {
-        let url = `https://autoembed.co/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
-        if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
-        return url
-      }
-      let url = `https://autoembed.co/embed/movie?tmdb=${tmdbId}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
-      if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
-      return url
-    },
-  },
-  {
-    id:      'multiembed.mov',
-    name:    'MultiEmbed',
-    badge:   'MULTI',
-    quality: 'HD',
-    preferWrapperFullscreen: true,
-    getUrl: ({ mediaType, tmdbId, season, episode, subtitleUrl, dsLang = 'en' }) => {
-      if (mediaType === 'tv') {
-        let url = `https://multiembed.mov/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
-        if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
-        return url
-      }
-      let url = `https://multiembed.mov/embed/movie?tmdb=${tmdbId}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
-      if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
-      return url
-    },
-  },
-  {
-    id:      'embed.su',
-    name:    'Embed.su',
-    badge:   'MULTI',
-    quality: 'HD',
-    preferWrapperFullscreen: true,
-    getUrl: ({ mediaType, tmdbId, season, episode, subtitleUrl, dsLang = 'en' }) => {
-      if (mediaType === 'tv') {
-        let url = `https://embed.su/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
-        if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
-        return url
-      }
-      let url = `https://embed.su/embed/movie?tmdb=${tmdbId}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
-      if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
-      return url
-    },
-  },
-  {
-    id:      '2embed.stream',
-    name:    '2Embed Stream',
-    badge:   'MULTI',
-    quality: 'SD',
-    preferWrapperFullscreen: true,
-    getUrl: ({ mediaType, tmdbId, season, episode, subtitleUrl, dsLang = 'en' }) => {
-      if (mediaType === 'tv') {
-        let url = `https://2embed.stream/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
-        if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
-        return url
-      }
-      let url = `https://2embed.stream/embed/movie?tmdb=${tmdbId}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
-      if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
-      return url
-    },
-  },
-  {
-    id:      'superembed.stream',
-    name:    'SuperEmbed',
-    badge:   'HD',
-    quality: 'HD',
-    preferWrapperFullscreen: true,
-    getUrl: ({ mediaType, tmdbId, season, episode, subtitleUrl, dsLang = 'en' }) => {
-      if (mediaType === 'tv') {
-        let url = `https://superembed.stream/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
-        if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
-        return url
-      }
-      let url = `https://superembed.stream/embed/movie?tmdb=${tmdbId}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
-      if (subtitleUrl) url += `&sub_url=${encodeURIComponent(subtitleUrl)}`
-      return url
-    },
-  },  {
-    id:      '2embed.cc',
+    id:    '2embed.cc',
     name:  '2Embed',
     badge: '',
     getUrl: ({ mediaType, tmdbId, season, episode }) => {
