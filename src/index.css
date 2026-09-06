@@ -194,7 +194,7 @@
 }
 
 .navbar-inner {
-  max-width: 1720px; margin: 0 auto;
+  max-width: 1400px; margin: 0 auto;
   padding: 0 1.5rem; height: 64px;
   display: flex; align-items: center;
   justify-content: space-between; gap: 1rem;
@@ -447,7 +447,7 @@
 @keyframes carousel-slide-out-left { from { opacity:1; transform: translateX(0); } to { opacity:0; transform: translateX(-40px); } }
 @keyframes carousel-slide-out-right { from { opacity:1; transform: translateX(0); } to { opacity:0; transform: translateX(40px); } }
 .carousel-inner {
-  max-width: 1720px; width: 100%; margin: 0 auto; padding: 0 1.5rem;
+  max-width: 1400px; width: 100%; margin: 0 auto; padding: 0 1.5rem;
   @media (min-width: 640px)  { padding: 0 3rem; }
   @media (min-width: 1024px) { padding: 0 4rem; max-width: 60%; }
 }
@@ -550,7 +550,7 @@
 /* ─── Homepage Search Bar ────────────────────────────────────────────────── */
 .homepage-search-section { padding: 2rem 0 0; }
 .homepage-search-inner {
-  max-width: 1720px; margin: 0 auto; padding: 0 1.5rem;
+  max-width: 1400px; margin: 0 auto; padding: 0 1.5rem;
   @media (min-width: 640px) { padding: 0 2rem; }
 }
 .homepage-search-bar {
@@ -583,7 +583,7 @@
 /* ─── Search results header ──────────────────────────────────────────────── */
 .search-results-header { padding: 2rem 0 0; }
 .search-results-inner {
-  max-width: 1720px; margin: 0 auto; padding: 0 1.5rem;
+  max-width: 1400px; margin: 0 auto; padding: 0 1.5rem;
   display: flex; flex-wrap: wrap; align-items: baseline;
   justify-content: space-between; column-gap: 1.5rem; row-gap: 0.25rem;
   @media (min-width: 640px) { padding: 0 2rem; }
@@ -604,7 +604,7 @@
 /* ─── Homepage / browse pages body ──────────────────────────────────────── */
 .homepage, .browse-page { min-height: 100vh; background: var(--bg-primary); }
 .homepage-body {
-  max-width: 1720px; margin: 0 auto; padding: 0 1.25rem 5rem;
+  max-width: 1400px; margin: 0 auto; padding: 0 1.25rem 5rem;
   position: relative; z-index: 1;
   /* Pagination scroll target: listing top sits right below the sticky navbar */
   scroll-margin-top: 78px;
@@ -781,7 +781,6 @@
   @media (min-width: 600px)  { grid-template-columns: repeat(3,1fr); }
   @media (min-width: 900px)  { grid-template-columns: repeat(4,1fr); }
   @media (min-width: 1200px) { grid-template-columns: repeat(5,1fr); }
-  @media (min-width: 1536px) { grid-template-columns: repeat(6,1fr); }
 }
 .movies-grid li { display: flex; flex-direction: column; min-width: 0; }
 
@@ -937,7 +936,7 @@
 [data-theme="light"] .details-back-btn { color: var(--text-primary); background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.12); }
 .details-back-btn--absolute { position: absolute; top: 1.25rem; left: 1.25rem; z-index: 10; }
 .details-content-wrapper {
-  max-width: 1400px; margin: -110px auto 0; padding: 0 1.25rem 4rem;
+  max-width: 1200px; margin: -110px auto 0; padding: 0 1.25rem 4rem;
   position: relative; z-index: 1;
   @media (min-width: 640px) { padding: 0 2.5rem 4rem; margin-top: -150px; }
 }
@@ -1049,11 +1048,13 @@
 }
 .vp-server-tab--active { background: rgba(171,139,255,0.18); border-color: var(--color-accent); color: var(--color-accent); }
 
-/* Lives inside .vp-player-wrap so it stays anchored to the video and remains
-   clickable while the wrapper is fullscreen. Positioned bottom-right, raised
-   just above the embed's own video controls so both are reachable. */
+/* Custom fullscreen button — VidSrc only. Sits directly above the embed's
+   controller fullscreen button (bottom-right corner, just over the control
+   bar). Inside .vp-player-wrap so it stays clickable while the wrapper is
+   fullscreen; VidSrc always fullscreens the wrapper, so the button can
+   never be covered/hidden by the fullscreened iframe. */
 .vp-fullscreen-btn {
-  position: absolute; bottom: 3.9rem; right: 0.9rem; z-index: 7;
+  position: absolute; bottom: 3.5rem; right: 0.75rem; z-index: 7;
   width: 34px; height: 34px; border-radius: 8px; padding: 0;
   background: rgba(3,0,20,0.65); border: 1px solid rgba(255,255,255,0.2);
   color: #e0d8ff; display: flex; align-items: center; justify-content: center;
@@ -1138,7 +1139,6 @@
   background: rgba(5, 3, 18, 0.6);
   border-top: 1px solid rgba(171, 139, 255, 0.08);
   font-size: 0.78rem;
-  padding-right: calc(1.25rem + 32px + 1rem);
 }
 .vp-shortcuts-label {
   color: var(--text-muted);
@@ -1241,7 +1241,7 @@
   background: var(--bg-nav); padding: 1rem 1.5rem;
 }
 .site-footer-inner {
-  max-width: 1720px; margin: 0 auto;
+  max-width: 1400px; margin: 0 auto;
   display: flex; align-items: center; justify-content: center;
   gap: 0.5rem; flex-wrap: wrap; text-align: center;
   font-size: 0.8rem; color: var(--text-muted);
@@ -1753,11 +1753,6 @@
   .carousel-overview { -webkit-line-clamp: 2; margin-bottom: 1rem; }
   .homepage-search-section { padding-top: 1rem; }
   .movies-section { margin-top: 0.9rem; }
-}
-
-/* ─── Ultrawide / very wide screens: cap line lengths, don't stretch ───────── */
-@media (min-width: 2200px) {
-  .movies-grid { grid-template-columns: repeat(7, 1fr); }
 }
 
 /* ─── Reduced motion: honor the OS preference ──────────────────────────────── */

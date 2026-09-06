@@ -23,6 +23,13 @@ const SERVERS = [
     badge:   'MULTI',
     quality: 'HD',
     preferWrapperFullscreen: true,
+    // VidSrc's JW Player ignores fullscreen requests aimed at the iframe, so
+    // this is the one provider that gets our own overlay fullscreen button
+    // (positioned just above its controller bar). Other providers expose
+    // working fullscreen buttons in their own controls — showing ours there
+    // would duplicate them, and clicking ours would hide it (the iframe
+    // enters fullscreen and covers the button). So: custom button ONLY here.
+    showCustomFullscreen: true,
     getUrl: ({ mediaType, tmdbId, season, episode, subtitleUrl, dsLang = 'en' }) => {
       if (mediaType === 'tv') {
         let url = `https://vidsrc-embed.ru/embed/tv?tmdb=${tmdbId}&season=${season}&episode=${episode}&primaryColor=63b8bc&secondaryColor=a2a2a2&iconColor=eefdec&icons=default&player=jw&title=true&poster=true&autoplay=false&nextbutton=false&ds_lang=${dsLang}`
@@ -347,17 +354,22 @@ const VideoPlayer = ({
 
       {/* ── Player ── */}
       <div className={`vp-player-wrap${isFullscreen ? ' vp-fullscreen-active' : ''}`} ref={wrapRef} data-vp-fullscreen={isFullscreen ? 'true' : 'false'}>
-        {/* Fullscreen-toggling button lives inside the wrapper so it stays
-              anchored to the video area and remains clickable while the
-              wrapper itself is fullscreen (overlays are hidden then). */}
-        <button
-          className="vp-fullscreen-btn"
-          title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (F)'}
-          aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-          onClick={() => requestPlayerFullscreen(wrapRef.current, current)}
-        >
-          {isFullscreen ? <CompressIcon /> : <ExpandIcon />}
-        </button>
+        {/* Custom fullscreen toggle — VidSrc only. Lives inside the wrapper
+              so it stays anchored to the video, remains clickable while the
+              wrapper is fullscreen, and sits just above the embed's own
+              controller fullscreen button. VidSrc always fullscreens the
+              WRAPPER (never the iframe), so the button can't be covered and
+              disappear after a click. */}
+        {current.showCustomFullscreen && (
+          <button
+            className="vp-fullscreen-btn"
+            title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (F)'}
+            aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+            onClick={() => requestPlayerFullscreen(wrapRef.current, current)}
+          >
+            {isFullscreen ? <CompressIcon /> : <ExpandIcon />}
+          </button>
+        )}
         {isLoadingOrError && (
           <div className={`vp-loading-overlay${shouldHideOverlays ? ' vp-hidden' : ''}`} aria-live="polite">
             <div className="vp-loading-inner">
