@@ -1,6 +1,6 @@
-import { useRef, useState, useCallback, useEffect } from 'react'
 import { getProfileUrl } from '../lib/tmdb'
 import { ChevronIcon } from './icons'
+import useHorizontalScroller from '../hooks/useHorizontalScroller'
 
 const ScrollButtons = ({ onScroll, showLeft, showRight }) => {
   if (!showLeft && !showRight) return null
@@ -34,41 +34,12 @@ const ScrollButtons = ({ onScroll, showLeft, showRight }) => {
  * (never navigates away or hides members) on desktop and mobile.
  */
 const CastStrip = ({ cast = [] }) => {
-  const stripRef = useRef(null)
-  const [canScrollLeft,  setCanScrollLeft]  = useState(false)
-  const [canScrollRight, setCanScrollRight] = useState(false)
-
   const people = Array.isArray(cast)
     ? cast.filter(m => m.profile_path)
     : []
 
-  const updateArrows = useCallback(() => {
-    const el = stripRef.current
-    if (!el) return
-    const maxScroll = el.scrollWidth - el.clientWidth
-    setCanScrollLeft(el.scrollLeft > 4)
-    setCanScrollRight(el.scrollLeft < maxScroll - 4)
-  }, [])
-
-  useEffect(() => {
-    // Measure after paint (deferred so no synchronous setState inside effect).
-    const raf = requestAnimationFrame(updateArrows)
-    const ro = new ResizeObserver(() => updateArrows())
-    if (stripRef.current) ro.observe(stripRef.current)
-    window.addEventListener('resize', updateArrows)
-    return () => {
-      cancelAnimationFrame(raf)
-      ro.disconnect()
-      window.removeEventListener('resize', updateArrows)
-    }
-  }, [updateArrows, people.length])
-
-  const scrollByDir = useCallback((dir) => {
-    const el = stripRef.current
-    if (!el) return
-    const amount = Math.max(320, el.clientWidth * 0.85)
-    el.scrollBy({ left: dir === 'left' ? -amount : amount, behavior: 'smooth' })
-  }, [])
+  const { stripRef, canScrollLeft, canScrollRight, scrollByDir, updateArrows } =
+    useHorizontalScroller(people.length)
 
   if (people.length === 0) return null
 

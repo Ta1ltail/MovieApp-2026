@@ -68,7 +68,7 @@ const SERVERS = [
     name:  '2Embed',
     badge: '',
     getUrl: ({ mediaType, tmdbId, season, episode }) => {
-      if (mediaType === 'tv') return `https://www.2embed.cc/embedtv/${tmdbId}&s=${season}&e=${episode}`
+      if (mediaType === 'tv') return `https://www.2embed.cc/embedtv/${tmdbId}?s=${season}&e=${episode}`
       return `https://www.2embed.cc/embed/${tmdbId}`
     },
   },
@@ -131,6 +131,17 @@ const ShortcutsBar = () => (
 // having never confirmed fullscreen actually happened.
 async function requestPlayerFullscreen(wrapEl, server) {
   if (!wrapEl) return
+
+  // Already fullscreen (on the wrapper or something inside it) → toggle back
+  // out. Without this, the button labeled "Exit fullscreen" and the F key
+  // were silent no-ops while fullscreen, since re-requesting fullscreen on
+  // the same element does nothing.
+  const fsEl = document.fullscreenElement ?? document.webkitFullscreenElement
+  if (fsEl && (fsEl === wrapEl || wrapEl.contains(fsEl))) {
+    const exit = document.exitFullscreen ?? document.webkitExitFullscreen
+    try { await exit?.call(document) } catch { /* already exiting */ }
+    return
+  }
 
   const iframe = wrapEl.querySelector('iframe')
   const tryFullscreen = (el) => {
@@ -276,7 +287,8 @@ const VideoPlayer = ({
     const onKey = (e) => {
       if (e.key !== 'f' && e.key !== 'F') return
       const target = document.activeElement
-      if (target && target.tagName === 'INPUT') return
+      const tag = target?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) return
       requestPlayerFullscreen(wrapRef.current, SERVERS[activeServer])
     }
     window.addEventListener('keydown', onKey)
@@ -322,19 +334,20 @@ const VideoPlayer = ({
       </div>
 
       {/* ── Player ── */}
-      {/* Fullscreen-toggling button lives on the wrapper so the user always
-            has a clickable fullscreen control even when the embed doesn't expose one. */}
-      <button
-        className="vp-fullscreen-btn"
-        title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (F)'}
-        aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-        onClick={() => requestPlayerFullscreen(wrapRef.current, current)}
-      >
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="14" height="14">
-          <path d="M21 3H3v18h18V3zm0 2-7 5v5h5l7-5zM3 3l7 5V18H3z"/>
-        </svg>
-      </button>
       <div className={`vp-player-wrap${isFullscreen ? ' vp-fullscreen-active' : ''}`} ref={wrapRef} data-vp-fullscreen={isFullscreen ? 'true' : 'false'}>
+        {/* Fullscreen-toggling button lives inside the wrapper so it stays
+              anchored to the video area and remains clickable while the
+              wrapper itself is fullscreen (overlays are hidden then). */}
+        <button
+          className="vp-fullscreen-btn"
+          title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen (F)'}
+          aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          onClick={() => requestPlayerFullscreen(wrapRef.current, current)}
+        >
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" width="14" height="14">
+            <path d="M21 3H3v18h18V3zm0 2-7 5v5h5l7-5zM3 3l7 5V18H3z"/>
+          </svg>
+        </button>
         {isLoadingOrError && (
           <div className={`vp-loading-overlay${shouldHideOverlays ? ' vp-hidden' : ''}`} aria-live="polite">
             <div className="vp-loading-inner">

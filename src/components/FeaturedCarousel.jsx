@@ -12,6 +12,13 @@ const InfoIcon = () => (
 
 const AUTOPLAY_DELAY = 6000
 
+// Users who ask the OS for reduced motion also shouldn't get an auto-advancing
+// hero carousel; the arrows/dots/keys still work.
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
 const FeaturedCarousel = () => {
   const navigate = useNavigate()
   const [slides, setSlides]     = useState([])
@@ -23,6 +30,10 @@ const FeaturedCarousel = () => {
   const [direction, setDirection]     = useState('next')
 
   const timerRef = useRef(null)
+  // Transition timer for goTo — cleared on unmount so a click right before
+  // navigating away can't setState on an unmounted component.
+  const animTimerRef = useRef(null)
+  useEffect(() => () => clearTimeout(animTimerRef.current), [])
 
   useEffect(() => {
     let cancelled = false
@@ -51,7 +62,8 @@ const FeaturedCarousel = () => {
     setDirection(dir)
     setIsAnimating(true)
     setIsPaused(true)
-    setTimeout(() => {
+    clearTimeout(animTimerRef.current)
+    animTimerRef.current = setTimeout(() => {
       setCurrent(index)
       setIsAnimating(false)
       setIsPaused(false)
@@ -67,13 +79,18 @@ const FeaturedCarousel = () => {
   }, [current, slides.length, goTo])
 
   useEffect(() => {
-    if (isPaused || loading || slides.length === 0) return
+    if (isPaused || loading || slides.length === 0 || prefersReducedMotion()) return
     timerRef.current = setInterval(goNext, AUTOPLAY_DELAY)
     return () => clearInterval(timerRef.current)
   }, [isPaused, loading, slides.length, goNext])
 
   useEffect(() => {
     const onKey = (e) => {
+      // Ignore arrow keys while the user is typing (search bar, inputs) —
+      // they move the text caret, not the carousel.
+      const tag = document.activeElement?.tagName
+      const isInput = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || document.activeElement?.isContentEditable
+      if (isInput) return
       if (e.key === 'ArrowLeft')  goPrev()
       if (e.key === 'ArrowRight') goNext()
     }
@@ -134,7 +151,7 @@ const FeaturedCarousel = () => {
       <div className="carousel-backdrop" aria-hidden="true">
         {slides.map((s, i) => (
           <img
-            key={s.id}
+            key={`${s.media_type ?? 'movie'}-${s.id}`}
             src={getBackdropUrl(s.backdrop_path, 'w1280')}
             srcSet={`${getBackdropUrl(s.backdrop_path, 'w780')} 780w, ${getBackdropUrl(s.backdrop_path, 'w1280')} 1280w, ${getBackdropUrl(s.backdrop_path, 'original')} 1920w`}
             sizes="100vw"

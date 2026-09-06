@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react'
 import { getPosterUrl } from '../lib/tmdb'
 import { buildPages, sortSeasons } from '../lib/utils'
 import { ChevronIcon, PlayIcon } from './icons'
+import useHorizontalScroller from '../hooks/useHorizontalScroller'
 
 export const EPISODES_PER_PAGE = 12
 
@@ -10,10 +11,17 @@ const seasonLabel = (s) => (s.season_number === 0 ? 'Specials' : `Season ${s.sea
 /**
  * SeasonsSection — TV-only picker.
  *
- * Seasons are shown as selectable poster cards. Picking a season loads (via the
- * parent) and displays ONLY that season's episodes, paginated 12 per page.
- * The currently-playing episode is highlighted and its page is shown whenever
- * the active episode changes (e.g. via the player's next/prev controls).
+ * Seasons are shown as poster cards on ONE horizontal line — a carousel that
+ * never wraps onto a second row. If there are more seasons than fit, the
+ * extra cards stay hidden beyond the edge and the Prev/Next buttons SLIDE
+ * the row left/right (same interaction as the Cast strip). Clicking
+ * Prev/Next never changes which season is selected — selection only changes
+ * by clicking a season card, the player, or episode navigation.
+ *
+ * Picking a season loads (via the parent) and displays ONLY that season's
+ * episodes, paginated 12 per page. The currently-playing episode is
+ * highlighted and its page is shown whenever the active episode changes
+ * (e.g. via the player's next/prev controls).
  */
 const SeasonsSection = ({
   seasons = [],
@@ -66,15 +74,11 @@ const SeasonsSection = ({
 
   const activeSeasonMeta = sortedSeasons.find(s => s.season_number === seasonNumber)
 
-  // Prev/Next season navigation — same visual language as the Cast strip's
-  // slide arrows, but it steps the SELECTED season instead of scrolling.
-  const seasonIndex = sortedSeasons.findIndex(s => s.season_number === seasonNumber)
-  const stepSeason = (delta) => {
-    const target = sortedSeasons[seasonIndex + delta]
-    if (target) onSeasonChange(target.season_number)
-  }
-  const canStepPrev = seasonIndex > 0
-  const canStepNext = seasonIndex !== -1 && seasonIndex < sortedSeasons.length - 1
+  // ── Strip-only navigation ────────────────────────────────────────────────
+  // The Prev/Next buttons SLIDE the season carousel horizontally (like the
+  // Cast strip). They never touch the selected season.
+  const { stripRef, canScrollLeft, canScrollRight, scrollByDir, updateArrows } =
+    useHorizontalScroller(sortedSeasons.length)
 
   if (sortedSeasons.length === 0) return null
 
@@ -83,22 +87,22 @@ const SeasonsSection = ({
       <div className="cast-heading-row">
         <h2 className="details-player-heading">Seasons</h2>
         {sortedSeasons.length > 1 && (
-          <div className="cast-nav" role="group" aria-label="Previous and next season">
+          <div className="cast-nav" role="group" aria-label="Slide seasons left or right">
             <button
               type="button"
               className="cast-nav-btn"
-              onClick={() => stepSeason(-1)}
-              disabled={!canStepPrev}
-              aria-label="Previous season"
+              onClick={() => scrollByDir('left')}
+              disabled={!canScrollLeft}
+              aria-label="Slide to previous seasons"
             >
               <ChevronIcon size={18} dir="left" />
             </button>
             <button
               type="button"
               className="cast-nav-btn"
-              onClick={() => stepSeason(1)}
-              disabled={!canStepNext}
-              aria-label="Next season"
+              onClick={() => scrollByDir('right')}
+              disabled={!canScrollRight}
+              aria-label="Slide to next seasons"
             >
               <ChevronIcon size={18} />
             </button>
@@ -106,8 +110,15 @@ const SeasonsSection = ({
         )}
       </div>
 
-      {/* Season cards */}
-      <div className="season-cards" role="group" aria-label="Select a season">
+      {/* Season cards — single horizontal strip, never wraps; overflow is
+          reachable by sliding with the buttons above (or touch/drag). */}
+      <div
+        className="season-cards"
+        role="group"
+        aria-label="Select a season"
+        ref={stripRef}
+        onScroll={updateArrows}
+      >
         {sortedSeasons.map(s => {
           const active = s.season_number === seasonNumber
           const poster = getPosterUrl(s.poster_path, 'w342')

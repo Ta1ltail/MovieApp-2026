@@ -67,10 +67,23 @@
   h2 { @apply text-2xl font-bold sm:text-3xl; color: var(--text-white); }
 }
 
+/* ─── Fluid root font-size (whole-UI scaling) ─────────────────────────────────
+   Rem-based sizes across the app scale gently with the viewport: slightly
+   larger text on TVs/ultrawide, slightly smaller on mid-size phones. All
+   clamps have hard floors/ceilings so text never becomes unreadably small
+   or comically large. */
+@media (min-width: 480px) {
+  html { font-size: clamp(15px, 0.3vw + 13.6px, 17px); }  /* 15→17px */
+}
+@media (min-width: 1600px) {
+  html { font-size: clamp(17px, 0.45vw + 9.8px, 21px); }  /* 17→21px */
+}
+
 /* ─── Utilities ────────────────────────────────────────────────────────────── */
 @utility text-gradient {
   @apply bg-linear-to-r from-[#D6C7FF] to-[#AB8BFF] bg-clip-text text-transparent;
 }
+
 
 /* ─── Instant theme switching ──────────────────────────────────────────────── */
 /* Added by ThemeContext for the single frame where data-theme is swapped, so
@@ -174,6 +187,9 @@
 .navbar {
   position: sticky;
   top: 0;
+  /* Notched / rounded-corner phones: keep contents off the system edges */
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
   z-index: 700;
   background: var(--bg-nav);
   backdrop-filter: blur(20px);
@@ -182,7 +198,7 @@
 }
 
 .navbar-inner {
-  max-width: 1400px; margin: 0 auto;
+  max-width: 1720px; margin: 0 auto;
   padding: 0 1.5rem; height: 64px;
   display: flex; align-items: center;
   justify-content: space-between; gap: 1rem;
@@ -398,9 +414,11 @@
 /* ─── Featured Carousel ──────────────────────────────────────────────────── */
 .carousel {
   position: relative; width: 100%;
-  height: clamp(480px, 85vh, 760px);
+  /* svh (small viewport height) keeps the hero fully visible on mobile
+     browsers with collapsing URL bars; clamps keep it sane on TVs. */
+  height: clamp(480px, 85svh, 820px);
   overflow: hidden; background: var(--bg-primary); user-select: none;
-  @media (max-width: 640px) { height: clamp(440px, 90vh, 600px); }
+  @media (max-width: 640px) { height: clamp(440px, 90svh, 640px); }
 }
 .carousel-backdrop { position: absolute; inset: 0; z-index: 0; }
 .carousel-backdrop-img {
@@ -433,7 +451,7 @@
 @keyframes carousel-slide-out-left { from { opacity:1; transform: translateX(0); } to { opacity:0; transform: translateX(-40px); } }
 @keyframes carousel-slide-out-right { from { opacity:1; transform: translateX(0); } to { opacity:0; transform: translateX(40px); } }
 .carousel-inner {
-  max-width: 1400px; width: 100%; margin: 0 auto; padding: 0 1.5rem;
+  max-width: 1720px; width: 100%; margin: 0 auto; padding: 0 1.5rem;
   @media (min-width: 640px)  { padding: 0 3rem; }
   @media (min-width: 1024px) { padding: 0 4rem; max-width: 60%; }
 }
@@ -512,9 +530,9 @@
 }
 @keyframes dot-progress { from { width: 0%; } to { width: 100%; } }
 .carousel-skeleton {
-  width: 100%; height: clamp(480px,85vh,760px); background: #0a0818;
+  width: 100%; height: clamp(480px,85svh,820px); background: #0a0818;
   position: relative; overflow: hidden;
-  @media (max-width: 640px) { height: clamp(440px,90vh,600px); }
+  @media (max-width: 640px) { height: clamp(440px,90svh,640px); }
 }
 .carousel-skeleton-pulse {
   position: absolute; inset: 0;
@@ -536,7 +554,7 @@
 /* ─── Homepage Search Bar ────────────────────────────────────────────────── */
 .homepage-search-section { padding: 2rem 0 0; }
 .homepage-search-inner {
-  max-width: 1400px; margin: 0 auto; padding: 0 1.5rem;
+  max-width: 1720px; margin: 0 auto; padding: 0 1.5rem;
   @media (min-width: 640px) { padding: 0 2rem; }
 }
 .homepage-search-bar {
@@ -569,7 +587,7 @@
 /* ─── Search results header ──────────────────────────────────────────────── */
 .search-results-header { padding: 2rem 0 0; }
 .search-results-inner {
-  max-width: 1400px; margin: 0 auto; padding: 0 1.5rem;
+  max-width: 1720px; margin: 0 auto; padding: 0 1.5rem;
   display: flex; flex-wrap: wrap; align-items: baseline;
   justify-content: space-between; column-gap: 1.5rem; row-gap: 0.25rem;
   @media (min-width: 640px) { padding: 0 2rem; }
@@ -590,7 +608,7 @@
 /* ─── Homepage / browse pages body ──────────────────────────────────────── */
 .homepage, .browse-page { min-height: 100vh; background: var(--bg-primary); }
 .homepage-body {
-  max-width: 1400px; margin: 0 auto; padding: 0 1.25rem 5rem;
+  max-width: 1720px; margin: 0 auto; padding: 0 1.25rem 5rem;
   position: relative; z-index: 1;
   /* Pagination scroll target: listing top sits right below the sticky navbar */
   scroll-margin-top: 78px;
@@ -767,6 +785,7 @@
   @media (min-width: 600px)  { grid-template-columns: repeat(3,1fr); }
   @media (min-width: 900px)  { grid-template-columns: repeat(4,1fr); }
   @media (min-width: 1200px) { grid-template-columns: repeat(5,1fr); }
+  @media (min-width: 1536px) { grid-template-columns: repeat(6,1fr); }
 }
 .movies-grid li { display: flex; flex-direction: column; min-width: 0; }
 
@@ -922,7 +941,7 @@
 [data-theme="light"] .details-back-btn { color: var(--text-primary); background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.12); }
 .details-back-btn--absolute { position: absolute; top: 1.25rem; left: 1.25rem; z-index: 10; }
 .details-content-wrapper {
-  max-width: 1200px; margin: -110px auto 0; padding: 0 1.25rem 4rem;
+  max-width: 1400px; margin: -110px auto 0; padding: 0 1.25rem 4rem;
   position: relative; z-index: 1;
   @media (min-width: 640px) { padding: 0 2.5rem 4rem; margin-top: -150px; }
 }
@@ -1007,7 +1026,10 @@
 .similar-info-skeleton { padding: 0.5rem 0.6rem 0.6rem; display: flex; flex-direction: column; gap: 4px; }
 
 /* ─── Video Player ───────────────────────────────────────────────────────── */
+/* Anchoring context for the fullscreen button and any other absolutely
+   positioned children — without this the button anchors to the page. */
 .vp-container {
+  position: relative;
   background: #070515; border-radius: 16px; overflow: hidden;
   border: 1px solid rgba(171,139,255,0.12); box-shadow: 0 8px 40px rgba(0,0,0,0.4);
 }
@@ -1026,6 +1048,8 @@
 }
 .vp-server-tab--active { background: rgba(171,139,255,0.18); border-color: var(--color-accent); color: var(--color-accent); }
 
+/* Lives inside .vp-player-wrap so it stays anchored to the video and remains
+   clickable while the wrapper is fullscreen. */
 .vp-fullscreen-btn {
   position: absolute; top: 0.75rem; right: 0.75rem; z-index: 7;
   width: 34px; height: 34px; border-radius: 8px; padding: 0;
@@ -1215,7 +1239,7 @@
   background: var(--bg-nav); padding: 1rem 1.5rem;
 }
 .site-footer-inner {
-  max-width: 1400px; margin: 0 auto;
+  max-width: 1720px; margin: 0 auto;
   display: flex; align-items: center; justify-content: center;
   gap: 0.5rem; flex-wrap: wrap; text-align: center;
   font-size: 0.8rem; color: var(--text-muted);
@@ -1258,12 +1282,25 @@
   flex: 0 0 110px; text-align: center;
   @media (min-width: 640px) { flex-basis: 120px; }
 }
+/* Uniform photo frame: every cast member gets the exact same 2:3 container.
+   The frame (not the image) fixes the size, so differing TMDB source
+   dimensions can never change the layout. */
 .cast-photo-wrap {
-  aspect-ratio: 2/3; border-radius: 10px; overflow: hidden;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  border-radius: 10px; overflow: hidden;
   background: var(--bg-secondary); border: 1px solid var(--border-card);
   margin-bottom: 0.4rem;
+  flex-shrink: 0;
 }
-.cast-photo { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* cover = fill the frame, crop the overflow — never stretch or distort.
+   Position favors the top of the frame, where headshots keep faces. */
+.cast-photo {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
 .cast-name {
   margin: 0; font-size: 0.78rem; font-weight: 700; color: var(--text-white);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -1275,23 +1312,39 @@
 
 /* ─── TV seasons & episodes ─────────────────────────────────────────────── */
 .seasons-section { margin-top: 3rem; }
+/* Single horizontal strip: season cards NEVER wrap to a second row. Extra
+   cards stay hidden beyond the edge and are revealed by sliding (Prev/Next
+   buttons or touch/drag) — same interaction as the cast strip below. */
 .season-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  display: flex;
   gap: 1rem;
   margin-bottom: 2rem;
+  overflow-x: auto;
+  padding-bottom: 0.75rem;
+  scroll-behavior: smooth;
+  -ms-overflow-style: none; scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+  /* Snap to card boundaries so sliding feels deliberate */
+  scroll-snap-type: x proximity;
 }
+.season-cards .season-card { scroll-snap-align: start; }
 @media (max-width: 480px) {
-  .season-cards { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.7rem; }
+  .season-cards { gap: 0.7rem; }
 }
 .season-card {
   display: flex; flex-direction: column; text-align: left;
+  /* Fixed width keeps every card identical and the strip slidable — flex
+     items would otherwise shrink/grow to fit and hide the overflow. */
+  flex: 0 0 140px;
   background: var(--bg-card); border: 1px solid var(--border-card);
   border-radius: 12px; overflow: hidden; cursor: pointer;
   padding: 0; color: inherit; font-family: inherit;
   transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), border-color 0.18s, box-shadow 0.18s;
   &:hover { transform: translateY(-3px); border-color: rgba(171,139,255,0.35); box-shadow: var(--shadow-hover); }
   &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+}
+@media (max-width: 480px) {
+  .season-card { flex-basis: 110px; }
 }
 .season-card--active {
   border-color: var(--color-accent);
@@ -1650,4 +1703,70 @@
   /* Open search takes the remaining navbar width on small screens */
   .navbar-search-wrap { flex: 1 1 auto; min-width: 0; justify-content: flex-end; }
   .navbar-search-input-wrap--wide { width: 100%; }
+}
+
+/* ─── Small phones (≤ 390px): comfort without shrinking type ────────────────
+   Text size is preserved (no unreadably small labels); instead spacing and
+   controls are compacted so everything still fits one-handed. */
+@media (max-width: 390px) {
+  .navbar-links { gap: 0.65rem; }
+  .navbar-link { font-size: 0.88rem; }
+  .movies-grid { gap: 0.85rem; }
+  .movie-card-info { padding: 0.55rem 0.6rem 0.65rem; }
+  .movie-card-title { font-size: 0.82rem; }
+  .filterbar-tab, .filter-trigger-btn { padding: 0.4rem 0.8rem; font-size: 0.8rem; }
+  .carousel { height: clamp(420px, 105svh, 560px); }
+  .carousel-inner { padding: 0 1.1rem; }
+  .homepage-body { padding-left: 0.9rem; padding-right: 0.9rem; }
+  .homepage-search-inner { padding: 0 0.9rem; }
+  .episode-still-wrap { width: 96px; }
+  .episode-row { gap: 0.7rem; padding: 0.6rem; }
+  .auth-modal { padding: 1.3rem 1.2rem 1.15rem; }
+}
+
+/* ─── Touch devices: comfortable tap targets (≥ ~42px) ───────────────────────
+   Pointer-precision media query leaves mouse-only desktops untouched. */
+@media (pointer: coarse) {
+  .navbar-search-btn { min-height: 40px; }
+  .navbar-search-close { width: 26px; height: 26px; }
+  .filterbar-tab,
+  .filter-trigger-btn,
+  .filter-toggle-btn,
+  .pagination-btn { min-height: 42px; }
+  .episode-pager-btn { min-width: 40px; min-height: 40px; }
+  .cast-nav-btn { width: 42px; height: 42px; }
+  .season-card-meta { font-size: 0.75rem; }
+  .vp-server-tab { padding: 0.45rem 1rem; }
+  .vp-fullscreen-btn { width: 40px; height: 40px; }
+  .navbar-search-kbd { display: none; }
+  /* Carousel dots: invisible padding grows the tap area while the visible
+     bar stays 4px tall (background-clip keeps the paint inside the box). */
+  .carousel-dot-btn { padding: 14px 0; background-clip: content-box; }
+}
+
+/* ─── Short landscape phones (e.g. 844×390): reclaim vertical space ────────── */
+@media (max-height: 480px) and (orientation: landscape) {
+  .carousel { height: 125svh; min-height: 380px; }
+  .carousel-content { padding-bottom: 3.5rem; }
+  .carousel-overview { -webkit-line-clamp: 2; margin-bottom: 1rem; }
+  .homepage-search-section { padding-top: 1rem; }
+  .movies-section { margin-top: 0.9rem; }
+}
+
+/* ─── Ultrawide / very wide screens: cap line lengths, don't stretch ───────── */
+@media (min-width: 2200px) {
+  .movies-grid { grid-template-columns: repeat(7, 1fr); }
+}
+
+/* ─── Reduced motion: honor the OS preference ──────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  html { scroll-behavior: auto; }
+  .cast-strip, .season-cards { scroll-behavior: auto; }
+  .page-enter, .carousel-content--enter,
+  .carousel-content--exit-next, .carousel-content--exit-prev { animation: none; }
 }
