@@ -50,7 +50,15 @@ const MediaDetailsContent = ({ mediaType, id }) => {
   const { user, getProgress, isWatched, toggleList, isInList, getShowProgress } = useUserData()
   const idNum = Number(id)
 
-  // TV: selected season + its episodes
+  // Back navigation: browser history when there is any (in-app navigation,
+  // search results, …) — otherwise a sane fallback so direct links,
+  // refreshes, and new tabs don't strand the visitor on a dead Back button.
+  // Defined before the early returns below, which reference it.
+  const canGoBack = typeof window !== 'undefined' && window.history.state?.idx > 0
+  const handleBack = () => {
+    if (canGoBack) navigate(-1)
+    else navigate(`/${mediaType === 'tv' ? 'tv' : 'movies'}`, { replace: true })
+  }
 
   const [detail, setDetail]       = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -196,7 +204,7 @@ const MediaDetailsContent = ({ mediaType, id }) => {
           <div className="error-state-icon">⚠️</div>
           <h2 className="error-state-title">Failed to load {mediaType === 'tv' ? 'series' : 'movie'}</h2>
           <p className="error-state-text">{error}</p>
-          <button className="error-state-btn" onClick={() => navigate(-1)}>Go back</button>
+          <button className="error-state-btn" onClick={handleBack}>Go back</button>
         </div>
       </div>
     )
@@ -348,23 +356,6 @@ const MediaDetailsContent = ({ mediaType, id }) => {
     return { total, watched, currentSeason }
   })()
 
-  // Up Next: the episode after the one currently playing (or last-watched).
-  const upNext = (() => {
-    if (!user || !isTv) return null
-    const ref = play ?? (continueInfo ? { season_number: continueInfo.season, episode_number: continueInfo.episode } : null)
-    if (!ref) return null
-    const refSeason = navSeasons.find(s => s.season_number === ref.season_number)
-    if (!refSeason) return null
-    const seasonTotal = episodeCountOf(ref.season_number)
-    if (ref.episode_number < seasonTotal) {
-      return { season: ref.season_number, episode: ref.episode_number + 1, name: `Episode ${ref.episode_number + 1}` }
-    }
-    // End of season → first episode of the next season with episodes.
-    const pos = navSeasons.findIndex(s => s.season_number === ref.season_number)
-    const next = navSeasons.slice(pos + 1).find(s => s.episode_count > 0)
-    return next ? { season: next.season_number, episode: 1, name: 'Episode 1' } : null
-  })()
-
   return (
     <div className="details-page">
       <Navbar />
@@ -383,7 +374,7 @@ const MediaDetailsContent = ({ mediaType, id }) => {
           <div className="details-backdrop-overlay" aria-hidden="true" />
           <button
             className="details-back-btn details-back-btn--absolute"
-            onClick={() => navigate(-1)}
+            onClick={handleBack}
             aria-label="Go back"
           >
             <BackIcon /> Back
@@ -518,20 +509,9 @@ const MediaDetailsContent = ({ mediaType, id }) => {
               </button>
             )}
 
-            {/* Up Next after finishing an episode */}
-            {user && isTv && upNext && (
-              <div className="up-next-card">
-                <span className="up-next-label">Next Episode</span>
-                <span className="up-next-ep">S{upNext.season} E{upNext.episode}</span>
-                <button
-                  type="button"
-                  className="vp-episode-nav-btn"
-                  onClick={() => playEpisode({ season_number: upNext.season, episode_number: upNext.episode, name: upNext.name })}
-                >
-                  ▶ Play Next Episode
-                </button>
-              </div>
-            )}
+            {/* Up Next lives INSIDE the player section (vp-episode-nav below) —
+                the hero area stays clean by design. */}
+
           </div>
         </div>
 

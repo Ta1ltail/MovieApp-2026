@@ -63,7 +63,8 @@ const HomePage = () => {
       <FeaturedCarousel />
 
       <ImportBanner />
-      <PersonalRows />
+      {/* Home keeps only the progress rows; My List / Favorites / Liked live in My Library. */}
+      <PersonalRows sections={['continue', 'recent']} />
 
       <SearchHeader
         searchTerm={searchTerm}

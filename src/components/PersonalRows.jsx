@@ -15,6 +15,8 @@ import { ChevronIcon } from './icons'
  *
  * Sections (each only renders when non-empty):
  *   Continue Watching · Recently Watched · My List · Favorites · Liked
+ * The Home page only renders Continue Watching + Recently Watched (via the
+ * `sections` prop); My Library renders the full set.
  *
  * Card art/titles come from the stored poster_path/title captured at save
  * time; anything missing is backfilled with a tiny TMDB lookup, cached.
@@ -138,11 +140,14 @@ const ListCard = ({ item }) => {
   )
 }
 
-const PersonalRows = () => {
+const PersonalRows = ({ sections = ['continue', 'recent', 'mylist', 'favorites', 'liked'] }) => {
   const { user, continueWatching, recentlyWatched, listRows, dbError } = useUserData()
+  // List sections are only rendered when requested (Home passes just
+  // continue/recent) — skip TMDB meta backfill entirely in that case.
+  const wantsLists = sections.some(s => s === 'mylist' || s === 'favorites' || s === 'liked')
 
   const listEntries = useMemo(() => {
-    if (!listRows?.length) return []
+    if (!wantsLists || !listRows?.length) return []
     return listRows.map(r => ({
       key: `${r.list_type}:${r.media_type}:${r.tmdb_id}`,
       list_type: r.list_type,
@@ -151,7 +156,7 @@ const PersonalRows = () => {
       title: r.title || null,       // null → backfill via TMDB
       poster_path: r.poster_path ?? null,
     }))
-  }, [listRows])
+  }, [listRows, wantsLists])
 
   const meta = useMediaMeta(listEntries)
   const resolve = (e) => {
@@ -162,23 +167,26 @@ const PersonalRows = () => {
   if (!user || dbError) return null
 
   const byType = (t) => listEntries.filter(e => e.list_type === t).map(resolve)
-  const myList = byType('mylist')
-  const favorites = byType('favorite')
-  const liked = byType('like')
+  const show = (name) => sections.includes(name)
+  const continueVisible = show('continue') && continueWatching.length > 0
+  const recentVisible = show('recent') && recentlyWatched.length > 0
+  const myList = show('mylist') ? byType('mylist') : []
+  const favorites = show('favorites') ? byType('favorite') : []
+  const liked = show('liked') ? byType('like') : []
 
-  if (continueWatching.length === 0 && recentlyWatched.length === 0 && myList.length === 0 && favorites.length === 0 && liked.length === 0) {
+  if (!continueVisible && !recentVisible && myList.length === 0 && favorites.length === 0 && liked.length === 0) {
     return null
   }
 
   return (
     <div className="personal-rows">
-      {continueWatching.length > 0 && (
+      {continueVisible && (
         <SectionRow heading="Continue Watching" count={continueWatching.length}>
           {continueWatching.map(row => <ContinueCard key={row.key} row={row} />)}
         </SectionRow>
       )}
 
-      {recentlyWatched.length > 0 && (
+      {recentVisible && (
         <SectionRow heading="Recently Watched" count={recentlyWatched.length}>
           {recentlyWatched.filter(r => !continueWatching.some(c => c.key === r.key)).map(row => (
             <RecentCard key={row.key} row={row} />
