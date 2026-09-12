@@ -17,7 +17,9 @@ export const supabase = createClient(
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: false, // we don't use OAuth/email links
+      // Required for Google OAuth (implicit-flow tokens arrive in the URL
+      // hash) and for the confirmation-email link handshake.
+      detectSessionInUrl: true,
     },
   }
 )

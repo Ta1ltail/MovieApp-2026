@@ -25,16 +25,31 @@ const NAV_LINKS = [
 ]
 
 const Navbar = () => {
-  const { user, logout } = useAuth()
+  const { user, logout, emailVerified, resendVerification } = useAuth()
   const navigate = useNavigate()
   const [searchOpen,      setSearchOpen]      = useState(false)
   const [navQuery,        setNavQuery]        = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [userMenuOpen,    setUserMenuOpen]    = useState(false)
+  const [resendState,     setResendState]     = useState('idle') // idle | sending | sent | error
+  const [resendError,     setResendError]     = useState('')
   const inputRef = useRef(null)
   const wrapRef  = useRef(null)
   const userMenuRef = useRef(null)
   const location = useLocation()
+
+  const handleResend = useCallback(async () => {
+    setResendState('sending')
+    setResendError('')
+    try {
+      await resendVerification()
+      setResendState('sent')
+    } catch (err) {
+      // 429 = Supabase's per-email rate limit (default: 60s between sends).
+      setResendError(err?.message ?? 'Could not send the email. Try again in a minute.')
+      setResendState('error')
+    }
+  }, [resendVerification])
 
   const openSearch = useCallback(() => {
     setSearchOpen(true)
@@ -216,7 +231,32 @@ const Navbar = () => {
               {userMenuOpen && (
                 <div className="navbar-user-menu" role="menu" aria-label="Account menu">
                   <p className="navbar-user-menu-email">{user.email}</p>
-                  <p className="navbar-user-menu-demo">Prototype session</p>
+
+                  {/* Unverified email — warning + resend, inline in the menu */}
+                  {emailVerified === false && (
+                    <div className="navbar-verify-warning" role="alert">
+                      <p className="navbar-verify-warning-text">
+                        ⚠️ Please confirm <strong>{user.email}</strong> — check your inbox.
+                      </p>
+                      {resendState === 'sent' ? (
+                        <p className="navbar-verify-sent" role="status">✓ Email sent — check your inbox</p>
+                      ) : (
+                        <button
+                          type="button"
+                          className="navbar-verify-resend"
+                          role="menuitem"
+                          onClick={handleResend}
+                          disabled={resendState === 'sending'}
+                        >
+                          {resendState === 'sending' ? 'Sending…' : 'Resend verification email'}
+                        </button>
+                      )}
+                      {resendState === 'error' && (
+                        <p className="navbar-verify-error" role="alert">{resendError}</p>
+                      )}
+                    </div>
+                  )}
+
                   <button
                     type="button"
                     className="navbar-user-menu-item"

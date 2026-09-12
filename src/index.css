@@ -1973,3 +1973,51 @@
   color: var(--text-white); margin: 0 0 0.35rem; letter-spacing: -0.02em;
 }
 .library-sub { color: var(--text-muted); font-size: 0.92rem; margin: 0; }
+
+/* ─── Email verification warning inside the navbar user menu (v5.1) ───── */
+.navbar-verify-warning {
+  background: rgba(245, 197, 24, 0.07);
+  border: 1px solid rgba(245, 197, 24, 0.3);
+  border-radius: 10px; padding: 0.6rem 0.7rem;
+  display: flex; flex-direction: column; gap: 0.4rem;
+}
+.navbar-verify-warning-text {
+  margin: 0; font-size: 0.75rem; line-height: 1.45; color: #f5c518;
+  font-weight: 600; overflow-wrap: anywhere;
+}
+.navbar-verify-warning-text strong { color: var(--text-white); font-weight: 700; }
+.navbar-verify-resend {
+  align-self: flex-start;
+  background: var(--color-accent-soft); border: 1px solid var(--border-accent);
+  color: #D6C7FF; font-family: inherit; font-size: 0.72rem; font-weight: 700;
+  padding: 0.32rem 0.75rem; border-radius: 999px; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  &:hover:not(:disabled) { background: rgba(171,139,255,0.24); border-color: var(--color-accent); }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+[data-theme="light"] .navbar-verify-resend { color: var(--color-accent-dim); }
+.navbar-verify-sent {
+  margin: 0; font-size: 0.72rem; font-weight: 600; color: #4ade80;
+}
+.navbar-verify-error {
+  margin: 0; font-size: 0.7rem; font-weight: 600; color: #f87171;
+}
+
+/* Google button + divider on the auth page */
+.auth-divider {
+  display: flex; align-items: center; gap: 0.75rem;
+  margin: 0.25rem 0 0.9rem; color: var(--text-muted); font-size: 0.75rem;
+}
+.auth-divider::before, .auth-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border-subtle);
+}
+.auth-google-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.55rem;
+  width: 100%; background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle); color: var(--text-primary);
+  font-family: inherit; font-size: 0.9rem; font-weight: 700;
+  padding: 0.65rem 1rem; border-radius: 999px; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  &:hover:not(:disabled) { background: var(--color-accent-soft); border-color: var(--border-accent); }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
