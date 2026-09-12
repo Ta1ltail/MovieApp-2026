@@ -1767,3 +1767,209 @@
   .page-enter, .carousel-content--enter,
   .carousel-content--exit-next, .carousel-content--exit-prev { animation: none; }
 }
+
+/* ═══ BingeTime auth + personal tracking (v5) ═══════════════════════════ */
+
+/* ─── Guest-data import banner ──────────────────────────────────────────── */
+.import-banner {
+  max-width: 1400px; margin: 1rem auto 0; padding: 0 1.5rem;
+}
+.import-banner p {
+  background: var(--color-accent-soft);
+  border: 1px solid var(--border-accent);
+  border-radius: 14px;
+  color: var(--text-primary); font-size: 0.9rem; line-height: 1.5;
+  padding: 0.85rem 1.1rem; margin: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+}
+.import-banner-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+.import-banner-yes {
+  background: linear-gradient(135deg, #7c5cbf, #AB8BFF); border: none;
+  color: #fff; font-family: inherit; font-weight: 700; font-size: 0.82rem;
+  padding: 0.45rem 1.1rem; border-radius: 999px; cursor: pointer;
+  transition: opacity 0.15s; &:hover { opacity: 0.9; }
+}
+.import-banner-no {
+  background: transparent; border: 1px solid var(--border-subtle);
+  color: var(--text-muted); font-family: inherit; font-weight: 600;
+  font-size: 0.82rem; padding: 0.45rem 1rem; border-radius: 999px;
+  cursor: pointer; transition: color 0.15s, border-color 0.15s;
+  &:hover { color: #f87171; border-color: rgba(248,113,113,0.4); }
+}
+
+/* ─── Personalized home rows ───────────────────────────────────────────── */
+.personal-rows { max-width: 1400px; margin: 1.5rem auto 0; padding: 0 1.25rem; }
+.personal-section { margin-top: 1.75rem; }
+.personal-row {
+  display: flex; gap: 0.9rem; overflow-x: auto; padding-bottom: 0.6rem;
+  scroll-behavior: smooth; scroll-snap-type: x proximity;
+  -ms-overflow-style: none; scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+.personal-card {
+  flex: 0 0 132px; scroll-snap-align: start;
+  display: flex; flex-direction: column; gap: 0.3rem;
+  text-decoration: none; color: var(--text-primary);
+}
+.personal-card-poster {
+  position: relative; width: 100%; aspect-ratio: 2/3;
+  border-radius: 10px; overflow: hidden; background: var(--bg-secondary);
+  border: 1px solid var(--border-card); margin-bottom: 0.15rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s;
+}
+.personal-card:hover .personal-card-poster {
+  transform: translateY(-4px) scale(1.02); box-shadow: var(--shadow-hover);
+}
+.personal-card-poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.personal-card-fallback { font-size: 1.5rem; opacity: 0.6; }
+.personal-card-play {
+  position: absolute; inset: 0; margin: auto; width: 40px; height: 40px;
+  border-radius: 50%; background: rgba(171,139,255,0.9); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.8rem; padding-left: 3px; opacity: 0;
+  transition: opacity 0.18s; box-shadow: 0 0 18px rgba(171,139,255,0.5);
+}
+.personal-card:hover .personal-card-play { opacity: 1; }
+.personal-card-check {
+  position: absolute; top: 6px; right: 6px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(74,222,128,0.92); color: #030014;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 800;
+}
+.personal-card-title {
+  font-size: 0.8rem; font-weight: 700; color: var(--text-white);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.personal-card-sub { font-size: 0.7rem; color: var(--text-muted); }
+.personal-progress {
+  display: block; height: 4px; border-radius: 999px;
+  background: var(--border-subtle); overflow: hidden;
+}
+.personal-progress-fill {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-accent-dim), var(--color-accent));
+}
+
+/* ─── Details page: personal actions & progress ────────────────────────── */
+.details-actions-row { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1.25rem; }
+.action-btn {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  background: var(--border-subtle); border: 1px solid var(--border-subtle);
+  color: var(--text-secondary); font-family: inherit; font-size: 0.82rem;
+  font-weight: 600; padding: 0.42rem 0.95rem; border-radius: 999px;
+  cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s;
+  &:hover { background: var(--color-accent-soft); border-color: var(--border-accent); color: #D6C7FF; }
+  &:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+}
+.action-btn--active {
+  background: rgba(171,139,255,0.18); border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+[data-theme="light"] .action-btn--active { color: var(--color-accent-dim); }
+
+.details-continue-card {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+  background: var(--color-accent-soft); border: 1px solid var(--border-accent);
+  border-radius: 14px; padding: 0.75rem 1rem; margin-bottom: 1rem;
+}
+.details-continue-info { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.details-continue-label {
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--color-accent);
+}
+[data-theme="light"] .details-continue-label { color: var(--color-accent-dim); }
+.details-continue-ep { font-size: 0.9rem; font-weight: 700; color: var(--text-white); }
+.details-watch-btn--resume { padding: 0.55rem 1.4rem; font-size: 0.88rem; }
+
+.details-tv-progress { margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.35rem; max-width: 460px; }
+.details-tv-progress-label {
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.details-tv-progress-bar {
+  height: 8px; border-radius: 999px; background: var(--border-subtle); overflow: hidden;
+}
+.details-tv-progress-fill {
+  height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-accent-dim), var(--color-accent));
+  transition: width 0.4s ease;
+}
+.details-tv-progress-text { font-size: 0.8rem; color: var(--text-secondary); font-weight: 600; }
+
+.details-watched-badge {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  background: rgba(74,222,128,0.14); border: 1px solid rgba(74,222,128,0.4);
+  color: #4ade80; font-size: 0.78rem; font-weight: 800;
+  padding: 0.3rem 0.8rem; border-radius: 999px; margin-bottom: 1rem;
+}
+
+.up-next-card {
+  display: inline-flex; align-items: center; gap: 0.9rem; flex-wrap: wrap;
+  margin-top: 1.25rem; padding: 0.75rem 1rem;
+  background: var(--bg-card); border: 1px solid var(--border-accent);
+  border-radius: 14px;
+}
+.up-next-label {
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--color-accent);
+}
+[data-theme="light"] .up-next-label { color: var(--color-accent-dim); }
+.up-next-ep { font-size: 0.9rem; font-weight: 700; color: var(--text-white); }
+
+/* ─── Per-episode watch indicators ─────────────────────────────────────── */
+.episode-watched-check {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(74,222,128,0.16); border: 1px solid rgba(74,222,128,0.45);
+  color: #4ade80; font-size: 0.7rem; font-weight: 800;
+}
+.episode-progress-inline {
+  position: relative; display: inline-block; width: 56px; height: 5px;
+  border-radius: 999px; background: var(--border-subtle); overflow: hidden; flex-shrink: 0;
+}
+.episode-progress-inline-fill {
+  position: absolute; inset: 0 auto 0 0; border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-accent-dim), var(--color-accent));
+}
+.episode-progress-bar { display: flex; align-items: center; gap: 0.5rem; margin: 0.2rem 0 0.35rem; }
+.episode-progress-fill {
+  position: relative; width: 160px; max-width: 40%; height: 5px;
+  border-radius: 999px; background: var(--border-subtle); overflow: hidden;
+}
+.episode-progress-bar .episode-progress-fill::after {
+  content: ''; position: absolute; inset: 0 auto 0 0;
+  width: var(--pct, 0%); border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-accent-dim), var(--color-accent));
+}
+.episode-progress-text { font-size: 0.68rem; font-weight: 700; color: var(--color-accent); }
+[data-theme="light"] .episode-progress-text { color: var(--color-accent-dim); }
+
+/* ─── Movie card watched/progress badges ───────────────────────────────── */
+.movie-card-watched-badge {
+  position: absolute; top: 6px; left: 6px; z-index: 2;
+  background: rgba(74,222,128,0.92); color: #030014;
+  font-size: 0.6rem; font-weight: 800; letter-spacing: 0.03em;
+  padding: 2px 7px; border-radius: 999px;
+}
+.movie-card-progress {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; height: 4px;
+  background: rgba(3,0,20,0.55);
+}
+.movie-card-progress-fill {
+  display: block; height: 100%;
+  background: linear-gradient(90deg, var(--color-accent-dim), var(--color-accent));
+}
+
+/* ─── Library page ─────────────────────────────────────────────────────── */
+.library-page { min-height: 100vh; background: var(--bg-primary); }
+.library-inner { max-width: 1400px; margin: 0 auto; padding: 2rem 1.5rem 5rem; }
+.library-header { margin-bottom: 1rem; }
+.library-header h1 {
+  font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 900;
+  color: var(--text-white); margin: 0 0 0.35rem; letter-spacing: -0.02em;
+}
+.library-sub { color: var(--text-muted); font-size: 0.92rem; margin: 0; }

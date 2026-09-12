@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { getPosterUrl } from '../lib/tmdb'
 import { buildPages, sortSeasons } from '../lib/utils'
 import { ChevronIcon, PlayIcon } from './icons'
@@ -33,7 +33,17 @@ const SeasonsSection = ({
   onRetryEpisodes,
   activePlay,            // { season_number, episode_number } currently playing
   onPlayEpisode,
+  episodeProgress = [],  // this show's watch_progress rows (authenticated)
+  showWatched = false,   // whether to render personal watch indicators
 }) => {
+  // "S1 E1 ✓  S1 E2 67%  S1 E3 …" — keyed lookup for fast per-episode state.
+  const epProgressMap = useMemo(() => {
+    const map = new Map()
+    for (const r of episodeProgress) {
+      map.set(`${r.season_number}:${r.episode_number}`, r)
+    }
+    return map
+  }, [episodeProgress])
   const play = useCallback((ep) => onPlayEpisode?.(ep), [onPlayEpisode])
 
   const sortedSeasons = sortSeasons(seasons)
@@ -201,13 +211,39 @@ const SeasonsSection = ({
                       <PlayIcon size={14} />
                     </button>
                   </div>
-                  <div className="episode-info">
-                    <div className="episode-title-row">
-                      <span className="episode-number">E{ep.episode_number}</span>
-                      <h4 className="episode-title">{ep.name || `Episode ${ep.episode_number}`}</h4>
-                      {isActive && <span className="episode-now-playing">Now Playing</span>}
-                    </div>
-                    {ep.overview && <p className="episode-overview">{ep.overview}</p>}
+                <div className="episode-info">
+                  <div className="episode-title-row">
+                    <span className="episode-number">E{ep.episode_number}</span>
+                    <h4 className="episode-title">{ep.name || `Episode ${ep.episode_number}`}</h4>
+                    {isActive && <span className="episode-now-playing">Now Playing</span>}
+                    {showWatched && (() => {
+                      const row = epProgressMap.get(`${ep.season_number}:${ep.episode_number}`)
+                      const pct = row ? Math.min(100, Math.round(row.progress_percent ?? 0)) : 0
+                      if (row && (row.watched || pct >= 90)) {
+                        return <span className="episode-watched-check" title="Watched">✓</span>
+                      }
+                      if (pct > 0) {
+                        return (
+                          <span className="episode-progress-inline" aria-label={`${pct}% watched`}>
+                            <span className="episode-progress-inline-fill" style={{ width: `${pct}%` }} />
+                          </span>
+                        )
+                      }
+                      return null
+                    })()}
+                  </div>
+                  {showWatched && (() => {
+                    const row = epProgressMap.get(`${ep.season_number}:${ep.episode_number}`)
+                    const pct = row ? Math.min(100, Math.round(row.progress_percent ?? 0)) : 0
+                    if (pct <= 0 || (row?.watched || pct >= 90)) return null
+                    return (
+                      <span className="episode-progress-bar" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
+                        <span className="episode-progress-fill" style={{ '--pct': `${pct}%` }} />
+                        <span className="episode-progress-text">{pct}%</span>
+                      </span>
+                    )
+                  })()}
+                  {ep.overview && <p className="episode-overview">{ep.overview}</p>}
                     <div className="episode-meta">
                       {typeof ep.runtime === 'number' && ep.runtime > 0 && (
                         <span>{ep.runtime} min</span>

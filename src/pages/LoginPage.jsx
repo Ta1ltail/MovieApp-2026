@@ -6,11 +6,11 @@ import { usePageTitle } from '../hooks/usePageTitle'
 /**
  * LoginPage — standalone Login / Register route (/login).
  *
- * Prototype auth (see AuthContext): submission is validated client-side and
- * then handled by the fake auth context, exactly like the previous modal —
- * only the surface changed from an overlay to a dedicated page so signing in
- * is a first-class navigation target (and mobile-friendly). A signed-in user
- * is redirected back to where they came from (or home).
+ * Real Supabase email + password auth (see AuthContext). Submission is
+ * validated client-side, then handed to the auth context; a signed-in user
+ * is redirected back to where they came from (or home). After signing in,
+ * any guest watch data found in localStorage is offered for import via the
+ * banner on the Home page (see UserDataContext).
  */
 const LoginPage = () => {
   const { user, login, register } = useAuth()
@@ -45,8 +45,8 @@ const LoginPage = () => {
       setError('Please enter a valid email address.')
       return
     }
-    if (password.length < 4) {
-      setError('Password must be at least 4 characters.')
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.')
       return
     }
     if (mode === 'register' && password !== confirm) {
@@ -55,10 +55,13 @@ const LoginPage = () => {
     }
     setBusy(true)
     try {
+      if (mode === 'login') {
+        await login(em, password)
+      } else {
+        await register(name, em, password)
+      }
       // On success `user` updates and the <Navigate> below sends the visitor
       // back where they came from — no manual navigation needed.
-      if (mode === 'login') await login(em)
-      else await register(name, em)
     } catch (err) {
       setError(err?.message ?? 'Something went wrong. Please try again.')
     } finally {
@@ -137,10 +140,10 @@ const LoginPage = () => {
               className="auth-input"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              placeholder="At least 4 characters"
+              placeholder="At least 6 characters"
               autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               required
-              minLength={4}
+              minLength={6}
             />
           </label>
 
@@ -155,7 +158,7 @@ const LoginPage = () => {
                 placeholder="Repeat your password"
                 autoComplete="new-password"
                 required
-                minLength={4}
+                minLength={6}
               />
             </label>
           )}

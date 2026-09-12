@@ -3,6 +3,7 @@ import { Routes, Route, useLocation } from 'react-router-dom'
 import { Analytics } from '@vercel/analytics/react'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AuthProvider } from './contexts/AuthContext'
+import { UserDataProvider } from './contexts/UserDataContext'
 import ThemeToggle from './components/ThemeToggle'
 import BackToTop from './components/BackToTop'
 import KeyboardShortcutsModal from './components/KeyboardShortcutsModal'
@@ -12,7 +13,8 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 const HomePage          = lazy(() => import('./pages/HomePage'))
 const BrowsePage        = lazy(() => import('./pages/BrowsePage'))
 const MediaDetailsPage  = lazy(() => import('./pages/MediaDetailsPage'))
-const LoginPage         = lazy(() => import('./pages/LoginPage'))
+const LoginPage          = lazy(() => import('./pages/LoginPage'))
+const LibraryPage        = lazy(() => import('./pages/LibraryPage'))
 
 const RouteFallback = () => (
   <div className="route-fallback" role="status" aria-label="Loading page">
@@ -84,6 +86,7 @@ const AppInner = () => {
             <Route path="/movie/:id" element={<MediaDetailsPage mediaType="movie" />} />
             <Route path="/tv/:id"    element={<MediaDetailsPage mediaType="tv" />} />
             <Route path="/login"     element={<LoginPage />} />
+            <Route path="/library"   element={<LibraryPage />} />
             {/* Unknown paths fall back to the home feed. */}
             <Route path="*"          element={<HomePage />} />
           </Routes>
@@ -101,7 +104,9 @@ const AppInner = () => {
 const App = () => (
   <ThemeProvider>
     <AuthProvider>
-      <AppInner />
+      <UserDataProvider>
+        <AppInner />
+      </UserDataProvider>
     </AuthProvider>
   </ThemeProvider>
 )

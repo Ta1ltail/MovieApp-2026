@@ -9,6 +9,25 @@ import { SkeletonGrid } from '../components/Spinner'
 import { EmptyState, ErrorState } from '../components/States'
 import { useMixedFeed } from '../hooks/useMixedFeed'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { useUserData } from '../contexts/UserDataContext'
+import PersonalRows from '../components/PersonalRows'
+
+const ImportBanner = () => {
+  const { importBanner, startImport, dismissImport } = useUserData()
+  if (!importBanner.open) return null
+  return (
+    <div className="import-banner" role="status">
+      <p>
+        <strong>Import your BingeTime history?</strong>{' '}
+        We found {importBanner.counts?.progress ?? 0} item{importBanner.counts?.progress === 1 ? '' : 's'} of watch progress from this device.
+      </p>
+      <div className="import-banner-actions">
+        <button className="import-banner-yes" onClick={startImport}>Import</button>
+        <button className="import-banner-no" onClick={dismissImport}>No thanks</button>
+      </div>
+    </div>
+  )
+}
 
 const HomePage = () => {
   const {
@@ -42,6 +61,9 @@ const HomePage = () => {
     <div className="homepage">
       <Navbar />
       <FeaturedCarousel />
+
+      <ImportBanner />
+      <PersonalRows />
 
       <SearchHeader
         searchTerm={searchTerm}

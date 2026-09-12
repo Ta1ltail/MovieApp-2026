@@ -1,32 +1,18 @@
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
+
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState, useCallback } from 'react'
 
 /**
- * PROTOTYPE AUTH — TESTING ONLY.
+ * AUTH — Supabase email + password.
  *
- * This is a deliberately fake authentication context so the Login/Register UI
- * can be built and tested end-to-end. It does NOT verify credentials, talk to
- * any backend, or store passwords — nothing sensitive ever touches storage.
+ * The public API is unchanged from the earlier prototype ({ user, login,
+ * register, logout }), so the Navbar and the /login page did not need to
+ * change. Sessions are persisted and auto-refreshed by supabase-js; on
+ * expiry the user simply reverts to the guest experience — nothing crashes.
  *
- * To implement real auth later: swap the bodies of `login`/`register`/`logout`
- * for your real API calls and keep the same shapes. The UI (Navbar + the
- * standalone /login page) does not need to change. Passwords are validated in
- * the UI and deliberately never stored, logged or transmitted by this
- * prototype — a real backend would receive them through these functions.
+ * `user` shape (UI-facing): { id, email, name }
  */
-
-const STORAGE_KEY = 'bingetime.auth.user'
-
-const readStoredUser = () => {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return null
-    const user = JSON.parse(raw)
-    return user && user.email ? user : null
-  } catch {
-    return null
-  }
-}
 
 const displayNameFromEmail = (email = '') => {
   const local = String(email).split('@')[0] || 'User'
@@ -37,41 +23,93 @@ const displayNameFromEmail = (email = '') => {
     .join(' ')
 }
 
-// Small delay so the busy state in the UI is actually visible during tests.
-const simulateLatency = () => new Promise(resolve => setTimeout(resolve, 450))
+const toUiUser = (sessionUser) => {
+  if (!sessionUser) return null
+  const meta = sessionUser.user_metadata ?? {}
+  return {
+    id: sessionUser.id,
+    email: sessionUser.email ?? '',
+    name: (meta.name || '').trim() || displayNameFromEmail(sessionUser.email),
+  }
+}
 
 const AuthContext = createContext(null)
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(readStoredUser)
+  const [user, setUser] = useState(null)
+  const [authReady, setAuthReady] = useState(!isSupabaseConfigured)
+  const mountedRef = useRef(true)
 
-  // The UI passes the submitted password as the last argument; a real backend
-  // will receive it there. This prototype ignores it on purpose.
-  const login = useCallback(async (email) => {
-    await simulateLatency()
-    const demoUser = { email, name: displayNameFromEmail(email), demo: true }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(demoUser))
-    setUser(demoUser)
-  }, [])
+  useEffect(() => {
+    mountedRef.current = true
+    if (!isSupabaseConfigured) return undefined
 
-  const register = useCallback(async (name, email) => {
-    await simulateLatency()
-    const demoUser = {
-      email,
-      name: name.trim() || displayNameFromEmail(email),
-      demo: true,
+    // Restore an existing session, then subscribe to changes (sign-in from
+    // another tab, token refresh, expiry).
+    supabase.auth.getSession()
+      .then(({ data }) => {
+        if (!mountedRef.current) return
+        setUser(toUiUser(data.session?.user))
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (mountedRef.current) setAuthReady(true)
+      })
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!mountedRef.current) return
+      setUser(toUiUser(session?.user))
+    })
+
+    return () => {
+      mountedRef.current = false
+      sub?.subscription?.unsubscribe?.()
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(demoUser))
-    setUser(demoUser)
   }, [])
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY)
+  // The UI passes (email, password); extra args are accepted for
+  // compatibility but unused.
+  const login = useCallback(async (email, password) => {
+    if (!isSupabaseConfigured) throw new Error('Auth is not configured — missing Supabase environment variables.')
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: String(email).trim().toLowerCase(),
+      password,
+    })
+    if (error) throw error
+    setUser(toUiUser(data.user))
+  }, [])
+
+  const register = useCallback(async (name, email, password) => {
+    if (!isSupabaseConfigured) throw new Error('Auth is not configured — missing Supabase environment variables.')
+    const trimmedName = String(name ?? '').trim()
+    const { data, error } = await supabase.auth.signUp({
+      email: String(email).trim().toLowerCase(),
+      password,
+      options: {
+        data: { name: trimmedName || displayNameFromEmail(email) },
+        // BingeTime is a personal project with no transactional email set
+        // up: confirm immediately so the account is usable right away.
+        emailConfirm: false,
+      },
+    })
+    if (error) throw error
+    // If the project requires email confirmation, data.session is null and
+    // the UI stays on the login page with the standard "check your inbox"
+    // path (Supabase's message is surfaced through the thrown/absent error).
+    if (data.session) setUser(toUiUser(data.user))
+  }, [])
+
+  const logout = useCallback(async () => {
+    try {
+      await supabase.auth.signOut()
+    } catch {
+      /* signing out a dead session is fine */
+    }
     setUser(null)
   }, [])
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, authReady, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   )

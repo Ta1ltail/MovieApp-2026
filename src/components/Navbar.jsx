@@ -21,6 +21,7 @@ const NAV_LINKS = [
   { to: '/', label: 'Home', end: true },
   { to: '/movies', label: 'Movies' },
   { to: '/tv', label: 'TV Series' },
+  { to: '/library', label: 'My Library', authOnly: true },
 ]
 
 const Navbar = () => {
@@ -136,15 +137,17 @@ const Navbar = () => {
           </Link>
 
           <div className="navbar-links">
-            {NAV_LINKS.map(({ to, label, end }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={end}
-                className={({ isActive }) => `navbar-link${isActive ? ' navbar-link--active' : ''}`}
-              >
-                {label}
-              </NavLink>
+            {NAV_LINKS.map(({ to, label, end, authOnly }) => (
+              authOnly && !user ? null : (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={end}
+                  className={({ isActive }) => `navbar-link${isActive ? ' navbar-link--active' : ''}`}
+                >
+                  {label}
+                </NavLink>
+              )
             ))}
           </div>
         </div>

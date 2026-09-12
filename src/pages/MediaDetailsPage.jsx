@@ -1,10 +1,13 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   fetchDetails, fetchSeasonEpisodes,
   getPosterUrl, getBackdropUrl,
   mediaTitle, mediaYear,
 } from '../lib/tmdb'
+import { useUserData } from '../contexts/UserDataContext'
+import useWatchTracker from '../hooks/useWatchTracker'
+import { movieKey, episodeKey } from '../lib/userData'
 import { sortSeasons } from '../lib/utils'
 import { describeTmdbError } from '../lib/errors'
 import { usePageTitle } from '../hooks/usePageTitle'
@@ -44,6 +47,10 @@ const MediaDetailsPage = ({ mediaType }) => {
 const MediaDetailsContent = ({ mediaType, id }) => {
   const navigate = useNavigate()
   const playerRef = useRef(null)
+  const { user, getProgress, isWatched, toggleList, isInList, getShowProgress } = useUserData()
+  const idNum = Number(id)
+
+  // TV: selected season + its episodes
 
   const [detail, setDetail]       = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -126,6 +133,46 @@ const MediaDetailsContent = ({ mediaType, id }) => {
 
   // Tab title: "Title (Year)" once loaded; base title while loading.
   usePageTitle(detail ? `${mediaTitle(detail)}${mediaYear(detail) ? ` (${mediaYear(detail)})` : ''}` : null)
+
+  // ── Watch tracking (hooks must run before the early returns below) ──────
+  const isTvEarly = mediaType === 'tv'
+  const resumeRow = play
+    ? getProgress(isTvEarly
+        ? episodeKey(idNum, play.season_number, play.episode_number)
+        : movieKey(idNum))
+    : null
+  const epRuntime = isTvEarly && play
+    ? episodes.find(e => e.season_number === play.season_number && e.episode_number === play.episode_number)?.runtime
+    : null
+  const durationSeconds = isTvEarly
+    ? (epRuntime ? epRuntime * 60 : null)
+    : (detail?.runtime ? detail.runtime * 60 : null)
+
+  useWatchTracker({
+    tmdbId: idNum,
+    mediaType,
+    season: play?.season_number ?? null,
+    episode: play?.episode_number ?? null,
+    title: detail ? mediaTitle(detail) : '',
+    initialPosition: resumeRow?.position_seconds ?? 0,
+    duration: durationSeconds,
+    enabled: Boolean(play) && Boolean(user),
+  })
+
+  // ── List actions (favorites / likes / my list) ──────────────────────────
+  const handleToggleList = (listType) => {
+    if (!detail) return
+    toggleList(listType, mediaType, idNum, {
+      title: mediaTitle(detail),
+      poster_path: detail.poster_path ?? null,
+    })
+  }
+
+  // ── TV: this show's progress rows (for per-episode states + progress panel) ─
+  const showProgressRows = useMemo(
+    () => (user ? getShowProgress(idNum) : []),
+    [user, getShowProgress, idNum]
+  )
 
   if (isLoading) {
     return (
@@ -272,6 +319,52 @@ const MediaDetailsContent = ({ mediaType, id }) => {
     ? (isGenericEpisodeName ? title : `${title} · ${play.name}`)
     : title
 
+  // ── Authenticated UX values ──────────────────────────────────────────────
+  const movieWatched = user && !isTv ? isWatched(movieKey(idNum)) : false
+
+  // Continue: the most recently touched unfinished episode of this show.
+  const continueInfo = (() => {
+    if (!user || !isTv) return null
+    const rows = showProgressRows
+      .filter(r => !r.watched && (r.progress_percent ?? 0) > 0)
+      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+    const target = rows[0]
+    if (!target) return null
+    return {
+      season: target.season_number,
+      episode: target.episode_number,
+      percent: Math.min(100, Math.round(target.progress_percent ?? 0)),
+      name: null,
+    }
+  })()
+
+  // Overall show progress: watched episodes vs total announced episodes.
+  const tvProgress = (() => {
+    if (!user || !isTv) return null
+    const total = (detail.number_of_episodes ?? 0) || navSeasons.reduce((s, x) => s + (x.episode_count ?? 0), 0)
+    const watched = showProgressRows.filter(r => r.watched || (r.progress_percent ?? 0) >= 90).length
+    if (!total) return null
+    const currentSeason = continueInfo?.season ?? seasonNumber
+    return { total, watched, currentSeason }
+  })()
+
+  // Up Next: the episode after the one currently playing (or last-watched).
+  const upNext = (() => {
+    if (!user || !isTv) return null
+    const ref = play ?? (continueInfo ? { season_number: continueInfo.season, episode_number: continueInfo.episode } : null)
+    if (!ref) return null
+    const refSeason = navSeasons.find(s => s.season_number === ref.season_number)
+    if (!refSeason) return null
+    const seasonTotal = episodeCountOf(ref.season_number)
+    if (ref.episode_number < seasonTotal) {
+      return { season: ref.season_number, episode: ref.episode_number + 1, name: `Episode ${ref.episode_number + 1}` }
+    }
+    // End of season → first episode of the next season with episodes.
+    const pos = navSeasons.findIndex(s => s.season_number === ref.season_number)
+    const next = navSeasons.slice(pos + 1).find(s => s.episode_count > 0)
+    return next ? { season: next.season_number, episode: 1, name: 'Episode 1' } : null
+  })()
+
   return (
     <div className="details-page">
       <Navbar />
@@ -343,6 +436,69 @@ const MediaDetailsContent = ({ mediaType, id }) => {
 
             {detail.overview && <p className="details-overview">{detail.overview}</p>}
 
+            {/* ── Authenticated: resume / continue / next-up controls ── */}
+            {user && isTv && continueInfo && (
+              <div className="details-continue-card">
+                <div className="details-continue-info">
+                  <span className="details-continue-label">Continue Watching</span>
+                  <span className="details-continue-ep">
+                    S{continueInfo.season} E{continueInfo.episode}{continueInfo.percent > 0 ? ` · ${continueInfo.percent}% watched` : ''}
+                  </span>
+                </div>
+                <button
+                  className="details-watch-btn details-watch-btn--resume"
+                  onClick={() => playEpisode({ season_number: continueInfo.season, episode_number: continueInfo.episode, name: continueInfo.name })}
+                  aria-label={`Continue S${continueInfo.season} E${continueInfo.episode}`}
+                >
+                  ▶ {continueInfo.percent > 0 ? 'Continue' : 'Start'}
+                </button>
+              </div>
+            )}
+
+            {user && isTv && tvProgress && (
+              <div className="details-tv-progress">
+                <span className="details-tv-progress-label">Your Progress</span>
+                <div className="details-tv-progress-bar" role="progressbar" aria-valuenow={tvProgress.watched} aria-valuemin={0} aria-valuemax={tvProgress.total}>
+                  <div className="details-tv-progress-fill" style={{ width: `${tvProgress.total ? Math.round((tvProgress.watched / tvProgress.total) * 100) : 0}%` }} />
+                </div>
+                <span className="details-tv-progress-text">
+                  {tvProgress.watched} / {tvProgress.total} episodes watched
+                  {tvProgress.currentSeason != null && ` · Season ${tvProgress.currentSeason}`}
+                </span>
+              </div>
+            )}
+
+            {!isTv && user && movieWatched && (
+              <span className="details-watched-badge">✓ Watched</span>
+            )}
+
+            {/* ── Authenticated: favorite / like / my list actions ── */}
+            {user && (
+              <div className="details-actions-row" role="group" aria-label="Personal lists">
+                <button
+                  className={`action-btn${isInList('favorite', mediaType, idNum) ? ' action-btn--active' : ''}`}
+                  onClick={() => handleToggleList('favorite')}
+                  aria-pressed={isInList('favorite', mediaType, idNum)}
+                >
+                  ♥ {isInList('favorite', mediaType, idNum) ? 'Favorited' : 'Favorite'}
+                </button>
+                <button
+                  className={`action-btn${isInList('like', mediaType, idNum) ? ' action-btn--active' : ''}`}
+                  onClick={() => handleToggleList('like')}
+                  aria-pressed={isInList('like', mediaType, idNum)}
+                >
+                  👍 {isInList('like', mediaType, idNum) ? 'Liked' : 'Like'}
+                </button>
+                <button
+                  className={`action-btn${isInList('mylist', mediaType, idNum) ? ' action-btn--active' : ''}`}
+                  onClick={() => handleToggleList('mylist')}
+                  aria-pressed={isInList('mylist', mediaType, idNum)}
+                >
+                  ＋ {isInList('mylist', mediaType, idNum) ? 'In My List' : 'My List'}
+                </button>
+              </div>
+            )}
+
             {!isTv && (
               <button
                 className="details-watch-btn"
@@ -360,6 +516,21 @@ const MediaDetailsContent = ({ mediaType, id }) => {
               >
                 ▶ Play Season {seasonNumber ?? 1}
               </button>
+            )}
+
+            {/* Up Next after finishing an episode */}
+            {user && isTv && upNext && (
+              <div className="up-next-card">
+                <span className="up-next-label">Next Episode</span>
+                <span className="up-next-ep">S{upNext.season} E{upNext.episode}</span>
+                <button
+                  type="button"
+                  className="vp-episode-nav-btn"
+                  onClick={() => playEpisode({ season_number: upNext.season, episode_number: upNext.episode, name: upNext.name })}
+                >
+                  ▶ Play Next Episode
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -413,6 +584,8 @@ const MediaDetailsContent = ({ mediaType, id }) => {
             onRetryEpisodes={() => setEpisodesReload(r => r + 1)}
             activePlay={play}
             onPlayEpisode={playEpisode}
+            episodeProgress={showProgressRows}
+            showWatched={Boolean(user)}
           />
         )}
 
