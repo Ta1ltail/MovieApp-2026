@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
+import { Analytics } from '@vercel/analytics/react'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { AuthProvider } from './contexts/AuthContext'
 import ThemeToggle from './components/ThemeToggle'
@@ -91,6 +92,8 @@ const AppInner = () => {
       <ThemeToggle />
       <BackToTop />
       <KeyboardShortcutsModal isOpen={shortcutsOpen} onClose={closeShortcuts} />
+      {/* Vercel Web Analytics — loads only in production; renders nothing in dev. */}
+      <Analytics />
     </>
   )
 }

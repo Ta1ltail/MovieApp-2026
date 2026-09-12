@@ -6,16 +6,8 @@ import {
   mediaTitle, mediaYear,
 } from '../lib/tmdb'
 import { sortSeasons } from '../lib/utils'
-
-const sanitizeError = (err) => {
-  if (err?.message?.startsWith('TMDB ')) {
-    const code = err.message.match(/TMDB (\d+)/)?.[1]
-    if (code === '401' || code === '403') return 'TMDB API key is missing or invalid — add VITE_TMDB_API_KEY to your .env file.'
-    if (code === '404') return 'This title could not be found. It may have been removed from TMDB.'
-    if (code === '429') return 'TMDB rate limit reached — please wait a moment and try again.'
-  }
-  return err?.message ?? 'Failed to load details.'
-}
+import { describeTmdbError } from '../lib/errors'
+import { usePageTitle } from '../hooks/usePageTitle'
 import Navbar from '../components/Navbar'
 import VideoPlayer from '../components/VideoPlayer'
 import CastStrip from '../components/CastStrip'
@@ -82,7 +74,7 @@ const MediaDetailsContent = ({ mediaType, id }) => {
         if (mediaType === 'tv') setSeasonNumber(firstUsableSeason(data))
         setIsLoading(false)
       })
-      .catch(err => { if (!cancelled) { setError(sanitizeError(err)); setIsLoading(false) } })
+      .catch(err => { if (!cancelled) { setError(describeTmdbError(err, 'Failed to load details.')); setIsLoading(false) } })
     return () => { cancelled = true }
   }, [mediaType, id])
 
@@ -119,7 +111,7 @@ const MediaDetailsContent = ({ mediaType, id }) => {
       })
       .catch(err => {
         if (cancelled) return
-        setEpisodesError(sanitizeError(err) ?? 'Failed to load episodes.')
+        setEpisodesError(describeTmdbError(err, 'Failed to load episodes.'))
         setEpisodesLoading(false)
       })
     return () => { cancelled = true }
@@ -131,6 +123,9 @@ const MediaDetailsContent = ({ mediaType, id }) => {
       playerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   }, [play])
+
+  // Tab title: "Title (Year)" once loaded; base title while loading.
+  usePageTitle(detail ? `${mediaTitle(detail)}${mediaYear(detail) ? ` (${mediaYear(detail)})` : ''}` : null)
 
   if (isLoading) {
     return (

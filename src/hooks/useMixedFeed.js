@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { fetchMixedTrending, fetchMixedSearch } from '../lib/tmdb'
+import { describeTmdbError } from '../lib/errors'
 import { useDebounce } from './useDebounce'
 
 /**
@@ -49,7 +50,7 @@ export const useMixedFeed = () => {
         setTotalResults(data.total_results ?? 0)
       } catch (err) {
         if (controller.signal.aborted) return
-        setError(err?.message ?? 'Failed to load.')
+        setError(describeTmdbError(err, 'Failed to load.'))
       } finally {
         if (!controller.signal.aborted) setIsLoading(false)
       }

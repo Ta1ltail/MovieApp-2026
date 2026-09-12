@@ -8,6 +8,7 @@ import SearchHeader from '../components/SearchHeader'
 import { SkeletonGrid } from '../components/Spinner'
 import { EmptyState, ErrorState } from '../components/States'
 import { useMixedFeed } from '../hooks/useMixedFeed'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const HomePage = () => {
   const {
@@ -16,6 +17,12 @@ const HomePage = () => {
     page, setPage,
     isLoading, error, reload,
   } = useMixedFeed()
+
+  usePageTitle(
+    hasSearch && searchTerm.trim()
+      ? `Search: ${searchTerm.trim()}`
+      : 'Movies & TV Series'
+  )
 
   // Pagination: land on the top of the content listing — right below the
   // search bar — not at the absolute top (which would jump back to the hero).

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { fetchTMDB, getPosterUrl, mediaTitle, mediaYear, rankSearchResults } from '../lib/tmdb'
 import { cachedFetch } from '../lib/cache'
 import { slugify } from '../lib/utils'
@@ -31,8 +31,11 @@ const searchSuggestions = (query) => {
  *  onSelect    — called when user picks a suggestion (closes dropdown)
  *  isVisible   — parent controls visibility
  *  onClose     — parent closes the dropdown
+ *  onSubmit    — Enter with nothing highlighted → parent submits the query
+ *                (navigates to the full results page)
  */
-const SearchSuggestions = ({ query, onSelect, isVisible, onClose }) => {
+const SearchSuggestions = ({ query, onSelect, isVisible, onClose, onSubmit }) => {
+  const navigate = useNavigate()
   const [results,   setResults]   = useState([])
   const [loading,   setLoading]   = useState(false)
   const [active,    setActive]    = useState(-1)
@@ -85,14 +88,27 @@ const SearchSuggestions = ({ query, onSelect, isVisible, onClose }) => {
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setActive(a => Math.max(a - 1, 0))
-    } else if (e.key === 'Enter' && active >= 0) {
+    } else if (e.key === 'Enter') {
       e.preventDefault()
-      const m = results[active]
-      if (m) onSelect?.(m)
+      if (active >= 0) {
+        // Keyboard pick: navigate to the highlighted title (the mouse path
+        // goes through the <Link>, but a programmatic onSelect alone never
+        // navigates — it only closes the dropdown).
+        const m = results[active]
+        if (m) {
+          const type  = m.media_type === 'tv' ? 'tv' : 'movie'
+          const title = mediaTitle(m)
+          navigate(`/${type}/${m.id}?title=${slugify(title)}`)
+          onSelect?.(m)
+        }
+      } else {
+        // Nothing highlighted → submit the raw query to full results.
+        onSubmit?.()
+      }
     } else if (e.key === 'Escape') {
       onClose?.()
     }
-  }, [isVisible, results, active, onSelect, onClose])
+  }, [isVisible, results, active, onSelect, onClose, onSubmit, navigate])
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown)

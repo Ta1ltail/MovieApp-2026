@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { fetchDiscover, fetchSearch, fetchGenres, CATEGORIES } from '../lib/tmdb'
+import { describeTmdbError } from '../lib/errors'
 import { useDebounce } from './useDebounce'
 
 export const useGenres = (mediaType) => {
@@ -101,7 +102,7 @@ export const useMediaBrowser = (mediaType) => {
         setTotalResults(data.total_results ?? 0)
       } catch (err) {
         if (controller.signal.aborted) return
-        setError(err?.message ?? 'Failed to fetch.')
+        setError(describeTmdbError(err, 'Failed to fetch.'))
       } finally {
         if (!controller.signal.aborted) setIsLoading(false)
       }

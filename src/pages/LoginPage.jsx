@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 /**
  * LoginPage — standalone Login / Register route (/login).
@@ -19,6 +20,7 @@ const LoginPage = () => {
     : '/'
 
   const [mode, setMode]       = useState('login') // 'login' | 'register'
+  usePageTitle(mode === 'login' ? 'Log in' : 'Create account')
   const [name, setName]       = useState('')
   const [email, setEmail]     = useState('')
   const [password, setPassword] = useState('')

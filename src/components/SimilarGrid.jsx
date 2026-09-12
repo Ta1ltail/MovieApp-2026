@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchSimilar, getPosterUrl, mediaTitle, mediaYear } from '../lib/tmdb'
+import { describeTmdbError } from '../lib/errors'
 import { slugify } from '../lib/utils'
 import LazyImage from './LazyImage'
 import { StarIcon } from './icons'
@@ -19,7 +20,7 @@ const SimilarGrid = ({ mediaType, id, heading = 'You Might Also Like' }) => {
         }
       })
       .catch(err => {
-        if (!cancelled) setError(err?.message ?? 'Failed to load recommendations')
+        if (!cancelled) setError(describeTmdbError(err, 'Failed to load recommendations'))
       })
       .finally(() => { if (!cancelled) setIsLoading(false) })
     return () => { cancelled = true }

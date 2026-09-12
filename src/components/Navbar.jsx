@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Link, NavLink, useLocation } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import SearchSuggestions from './SearchSuggestions'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -25,6 +25,7 @@ const NAV_LINKS = [
 
 const Navbar = () => {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const [searchOpen,      setSearchOpen]      = useState(false)
   const [navQuery,        setNavQuery]        = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -94,6 +95,16 @@ const Navbar = () => {
     return () => document.removeEventListener('mousedown', onOutside)
   }, [searchOpen, closeSearch])
 
+  // Enter in the navbar search → full mixed results on the Home page.
+  // When the suggestions dropdown is open, SearchSuggestions owns Enter
+  // instead (jump to the highlighted title, or submit via onSubmit), so
+  // this fallback only fires when the dropdown is closed.
+  const handleSearchSubmit = useCallback(() => {
+    const q = navQuery.trim()
+    if (!q) return
+    navigate(`/?q=${encodeURIComponent(q)}`)
+  }, [navQuery, navigate])
+
   const handleInputChange = (e) => {
     const val = e.target.value
     setNavQuery(val)
@@ -154,6 +165,7 @@ const Navbar = () => {
                     placeholder="Search movies & TV… (Esc to close)"
                     value={navQuery}
                     onChange={handleInputChange}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !showSuggestions) handleSearchSubmit() }}
                     onFocus={() => navQuery.length >= 2 && setShowSuggestions(true)}
                     aria-label="Search movies and TV"
                     aria-autocomplete="list"
@@ -167,6 +179,7 @@ const Navbar = () => {
                   isVisible={showSuggestions}
                   onSelect={handleSuggestionSelect}
                   onClose={() => setShowSuggestions(false)}
+                  onSubmit={handleSearchSubmit}
                 />
               </>
             ) : (

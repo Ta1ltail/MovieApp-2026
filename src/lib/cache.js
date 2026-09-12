@@ -1,4 +1,9 @@
 const cache = new Map()
+// In-flight promise dedup: concurrent callers for the same key share one
+// request instead of racing the network (React StrictMode double-mounts,
+// the carousel and genre map firing together, …). Failed requests are never
+// cached — the entry is dropped so the next caller retries.
+const inFlight = new Map()
 const TTL = 5 * 60 * 1000
 const MAX_ENTRIES = 200
 
@@ -35,7 +40,20 @@ const setCached = (key, data) => {
 export const cachedFetch = async (key, fetcher) => {
   const hit = getCached(key)
   if (hit) return hit
-  const data = await fetcher()
-  setCached(key, data)
-  return data
+
+  const pending = inFlight.get(key)
+  if (pending) return pending
+
+  const promise = (async () => {
+    try {
+      const data = await fetcher()
+      setCached(key, data)
+      return data
+    } finally {
+      inFlight.delete(key)
+    }
+  })()
+
+  inFlight.set(key, promise)
+  return promise
 }

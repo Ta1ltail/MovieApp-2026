@@ -8,6 +8,7 @@ import SearchHeader from '../components/SearchHeader'
 import { SkeletonGrid } from '../components/Spinner'
 import { EmptyState, ErrorState } from '../components/States'
 import { useMediaBrowser, useGenres } from '../hooks/useMediaBrowser'
+import { usePageTitle } from '../hooks/usePageTitle'
 
 const PAGE_LABEL = {
   movie: { noun: 'movie',  placeholder: 'Search movies, genres, titles…' },
@@ -35,6 +36,12 @@ const BrowsePage = ({ mediaType }) => {
   const genres = useGenres(mediaType)
   const isSearching = Boolean(searchTerm.trim())
   const label = PAGE_LABEL[mediaType]
+
+  usePageTitle(
+    isSearching && searchTerm.trim()
+      ? `Search: ${searchTerm.trim()}`
+      : mediaType === 'tv' ? 'TV Series' : 'Movies'
+  )
 
   // Pagination: any page change returns the user to the top of the listing —
   // just below the search bar (same behavior on the Home page).
