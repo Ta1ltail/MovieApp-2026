@@ -14,8 +14,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase'
  * Email verification model (see supabase/migrations/20260912_email_verified.sql):
  *   • "Confirm email" is OFF in the dashboard → users log in IMMEDIATELY
  *     after registering, no verification gate.
- *   • At registration we still send a branded BingeTime confirmation email
- *     (a magic-link OTP with createSession:false so it only verifies).
+ *   • At registration we still send a confirmation email (a magic-link OTP).
  *   • Clicking the email's button verifies the address and redirects back
  *     to the homepage, still logged in — the app calls the
  *     mark_email_verified RPC, flipping profiles.email_verified.
@@ -50,12 +49,24 @@ export const AuthProvider = ({ children }) => {
   const [authReady, setAuthReady] = useState(!isSupabaseConfigured)
   const [emailVerified, setEmailVerified] = useState(true)
   const mountedRef = useRef(true)
+  // User id whose address we've PROVEN verified in this tab (email link
+  // consumed / Google OAuth return). Guards against a slower duplicate
+  // profile read overwriting a fresh verified=true with a stale false.
+  const verifiedUserRef = useRef(null)
 
   // Read profiles.email_verified for the signed-in user (Google users get
   // true without a DB call — the provider verified them).
   const loadVerificationState = useCallback(async (u) => {
-    if (!u) { setEmailVerified(true); return }
-    if (u.app_metadata?.provider === 'google') { setEmailVerified(true); return }
+    if (!u) { verifiedUserRef.current = null; setEmailVerified(true); return }
+    if (u.app_metadata?.provider === 'google') {
+      verifiedUserRef.current = u.id
+      setEmailVerified(true)
+      return
+    }
+    // Already proven verified in this tab? A duplicate async profile read
+    // (e.g. a SIGNED_IN event racing the link-consumption flow) must not
+    // flip it back to false.
+    if (verifiedUserRef.current === u.id) return
     try {
       const { data } = await supabase
         .from('profiles')
@@ -70,19 +81,27 @@ export const AuthProvider = ({ children }) => {
     }
   }, [])
 
-  // Consume the confirmation-email redirect. Two shapes:
-  //   • ?token_hash=…&type=magiclink — the OTP link from our branded email;
-  //     we verify it client-side (verifies the address, same user, already
-  //     logged in), flag the profile, and clean the URL.
+  // Consume the confirmation-email redirect. Three shapes, all ending on
+  // the homepage, still logged in:
+  //   • ?token_hash=…&type=magiclink — a custom template that links straight
+  //     to the app; we verify the OTP ourselves.
+  //   • #access_token=… — the DEFAULT template's flow: the auth server
+  //     verifies the link and redirects back with tokens in the URL
+  //     fragment; supabase-js consumes them and establishes the session.
+  //     Google OAuth also returns in this shape — marking verified is
+  //     correct there too, since Google proved the address.
   //   • ?verify=success — future server-side handshakes (defensive).
-  // Both end on the homepage, still logged in.
   const consumeVerifyRedirect = useCallback(async () => {
     const params = new URLSearchParams(window.location.search)
+    const hashParams = new URLSearchParams(
+      window.location.hash.startsWith('#') ? window.location.hash.slice(1) : ''
+    )
     const tokenHash = params.get('token_hash')
     const verifyFlag = params.get('verify')
-    if (!tokenHash && verifyFlag !== 'success') return false
+    const tokenInFragment = Boolean(hashParams.get('access_token'))
+    if (!tokenHash && verifyFlag !== 'success' && !tokenInFragment) return false
 
-    let verified
+    let verified = false
     if (tokenHash) {
       try {
         const { error } = await supabase.auth.verifyOtp({
@@ -91,11 +110,25 @@ export const AuthProvider = ({ children }) => {
         })
         verified = !error
       } catch { verified = false }
-    } else {
-      const u = (await supabase.auth.getUser()).data.user
-      verified = Boolean(u)
+    }
+    if (!verified) {
+      // The link was already consumed by supabase-js (detectSessionInUrl) or
+      // by the auth server's redirect. Poll briefly for the session it
+      // establishes — being authenticated here means the address was just
+      // verified by the email link.
+      for (let attempt = 0; attempt < 10 && !verified; attempt += 1) {
+        try {
+          const { data } = await supabase.auth.getSession()
+          if (data.session?.user) verified = true
+        } catch { /* keep polling */ }
+        if (!verified) await new Promise(resolve => setTimeout(resolve, 300))
+      }
     }
     if (verified) {
+      try {
+        const { data } = await supabase.auth.getUser()
+        verifiedUserRef.current = data.user?.id ?? null
+      } catch { /* the flag below is set regardless */ }
       await supabase.rpc('mark_email_verified').catch(() => {})
       if (mountedRef.current) setEmailVerified(true)
     }
@@ -162,17 +195,16 @@ export const AuthProvider = ({ children }) => {
       throw new Error('This account needs email confirmation before first login. Click the link we emailed you, then log in.')
     }
     setUser(toUiUser(data.user))
+    verifiedUserRef.current = null
     setEmailVerified(false)
 
-    // Branded verification email, sent automatically right after signup.
-    // A magic-link OTP with createSession:false only VERIFIES the address —
-    // it never creates a second session and doesn't depend on the dashboard
-    // "Confirm email" toggle (see supabase/auth#2513).
+    // Verification email, sent automatically right after signup. Clicking
+    // the link verifies the address and returns to the homepage logged in;
+    // consumeVerifyRedirect then flips profiles.email_verified.
     supabase.auth.signInWithOtp({
       email: String(email).trim().toLowerCase(),
       options: {
-        createSession: false, // verify-only link — never a second session
-        emailRedirectTo: window.location.origin, // → homepage, still logged in
+        emailRedirectTo: window.location.origin,
         shouldCreateUser: false,
       },
     }).catch(() => { /* non-fatal — the menu warning has a resend button */ })
@@ -185,7 +217,6 @@ export const AuthProvider = ({ children }) => {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        createSession: false,
         emailRedirectTo: window.location.origin,
         shouldCreateUser: false,
       },
@@ -215,6 +246,7 @@ export const AuthProvider = ({ children }) => {
       /* signing out a dead session is fine */
     }
     setUser(null)
+    verifiedUserRef.current = null
     setEmailVerified(true)
   }, [])
 
